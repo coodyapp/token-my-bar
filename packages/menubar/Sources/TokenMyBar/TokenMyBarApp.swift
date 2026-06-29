@@ -27,7 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var refreshTimer: Timer?
     private var snapshots: [ProviderSnapshot] = []
     private var isRefreshing = false
-    private var popoverContentSize = NSSize(width: 372, height: 360)
+    private var popoverContentSize = NSSize(width: 480, height: 560)
 
     // MARK: Lifecycle
 
@@ -92,21 +92,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let screen = button.window?.screen ?? NSScreen.main
         let visibleHeight = screen?.visibleFrame.height ?? 900
         let height = min(estimatedPopoverHeight(), visibleHeight - 48)
-        return NSSize(width: 372, height: max(150, height))
+        return NSSize(width: 480, height: max(180, height))
     }
 
     private func estimatedPopoverHeight() -> CGFloat {
         let active = snapshots.filter { $0.status == .ok || $0.status == .stale }
-        guard !active.isEmpty else { return 130 }
+        guard !active.isEmpty else { return 210 }
 
-        let headerHeight: CGFloat = 55
-        let contentPadding: CGFloat = 28
-        let dividerHeight: CGFloat = CGFloat(max(0, active.count - 1))
+        let headerHeight: CGFloat = 96
+        let bottomPadding: CGFloat = 22
+        let dividers = CGFloat(active.count)
         let vendorHeights = active.reduce(CGFloat(0)) { total, snapshot in
             let rowCount = max(snapshot.usageRows.count, 1)
-            return total + 24 + CGFloat(rowCount) * 31
+            let rowSpacing = CGFloat(max(0, rowCount - 1)) * 22
+            return total + 44 + 28 + 26 + CGFloat(rowCount) * 39 + rowSpacing
         }
-        return headerHeight + 1 + contentPadding + dividerHeight + CGFloat(max(0, active.count - 1)) * 20 + vendorHeights
+        return headerHeight + dividers + bottomPadding + vendorHeights
     }
 
     private func showContextMenu() {
@@ -245,13 +246,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             onAbout: { [weak self] in self?.openAbout() },
             onQuit: { [weak self] in self?.quit() }
         )
-        popover.contentViewController = NSHostingController(
-            rootView: PopoverView(
-                snapshots: snapshots,
-                actions: actions,
-                contentHeight: popoverContentSize.height
-            )
+        let rootView = PopoverView(
+            snapshots: snapshots,
+            actions: actions,
+            contentHeight: popoverContentSize.height
         )
+        if let hostingController = popover.contentViewController as? NSHostingController<PopoverView> {
+            hostingController.rootView = rootView
+        } else {
+            popover.contentViewController = NSHostingController(rootView: rootView)
+        }
     }
 
     private func statusTitle() -> NSAttributedString {
