@@ -27,7 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var refreshTimer: Timer?
     private var snapshots: [ProviderSnapshot] = []
     private var isRefreshing = false
-    private var popoverContentSize = NSSize(width: 340, height: 420)
+    private var popoverContentSize = NSSize(width: 640, height: 720)
 
     // MARK: Lifecycle
 
@@ -91,8 +91,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func preferredPopoverSize(for button: NSStatusBarButton) -> NSSize {
         let screen = button.window?.screen ?? NSScreen.main
         let visibleHeight = screen?.visibleFrame.height ?? 900
-        let height = max(320, min(420, visibleHeight - 96))
-        return NSSize(width: 340, height: height)
+        let height = max(500, min(720, visibleHeight - 96))
+        return NSSize(width: 640, height: height)
     }
 
     private func showContextMenu() {
@@ -160,7 +160,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 settings: settings,
                 launchAtLogin: launchAtLogin,
                 onRefreshIntervalChange: { [weak self] in self?.scheduleRefreshTimer() },
-                onVendorsChange: { [weak self] in Task { await self?.refresh(force: true) } }
+                onVendorsChange: { [weak self] in Task { await self?.refresh(force: true) } },
+                onDisplayPreferencesChange: { [weak self] in self?.render() }
             )
         }
         settingsWindowController?.show()
@@ -241,20 +242,58 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             return statusSegment(iconName: "chart.bar.xaxis", title: "--")
         }
 
+        let mode = effectiveDisplayMode(for: segments)
+        if mode == .summary {
+            return summaryStatusTitle(for: segments)
+        }
+
         let title = NSMutableAttributedString()
         for (index, segment) in segments.enumerated() {
             if index > 0 {
                 title.append(NSAttributedString(string: "  "))
             }
-            title.append(statusSegment(iconName: iconName(for: segment.providerID), title: segment.title))
+            switch mode {
+            case .iconPercentage, .custom:
+                title.append(statusSegment(iconName: iconName(for: segment.providerID), title: segment.title))
+            case .percentageOnly:
+                title.append(statusText(segment.title))
+            case .iconsOnly:
+                title.append(statusSegment(iconName: iconName(for: segment.providerID), title: ""))
+            case .summary:
+                break
+            }
         }
         return title
     }
 
-    private func statusSegments() -> [(providerID: ProviderID, title: String)] {
+    private func effectiveDisplayMode(for segments: [(providerID: ProviderID, percent: Double, title: String)]) -> DisplayMode {
+        if settings.collapseToSummaryAutomatically, segments.count > 2 { return .summary }
+        return settings.displayMode
+    }
+
+    private func summaryStatusTitle(for segments: [(providerID: ProviderID, percent: Double, title: String)]) -> NSAttributedString {
+        switch settings.summaryCalculation {
+        case .highestUsage:
+            guard let highest = segments.max(by: { $0.percent < $1.percent }) else { return statusText("--") }
+            return statusSegment(iconName: iconName(for: highest.providerID), title: highest.title)
+        case .averageUsage:
+            let average = segments.map(\.percent).reduce(0, +) / Double(segments.count)
+            return statusSegment(iconName: "chart.bar.xaxis", title: "\(Int(average.rounded()))%")
+        case .selectedProvider:
+            guard let primary = config.primaryVendor,
+                  let selected = segments.first(where: { $0.providerID == primary }) ?? segments.first else {
+                return statusText("--")
+            }
+            return statusSegment(iconName: iconName(for: selected.providerID), title: selected.title)
+        }
+    }
+
+    private func statusSegments() -> [(providerID: ProviderID, percent: Double, title: String)] {
         let usable = snapshots.filter { $0.status == .ok || $0.status == .stale }
         let ordered: [ProviderSnapshot]
-        if let primary = config.primaryVendor, let primarySnapshot = usable.first(where: { $0.providerID == primary }) {
+        if settings.showProviderOrder,
+           let primary = config.primaryVendor,
+           let primarySnapshot = usable.first(where: { $0.providerID == primary }) {
             ordered = [primarySnapshot] + usable.filter { $0.providerID != primary }
         } else {
             ordered = usable
@@ -262,7 +301,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         return ordered.compactMap { snapshot in
             guard let percent = snapshot.usagePercent else { return nil }
-            return (snapshot.providerID, "\(Int(percent.rounded()))%")
+            return (snapshot.providerID, percent, "\(Int(percent.rounded()))%")
         }
     }
 
@@ -273,16 +312,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             attachment.image = image
             attachment.bounds = NSRect(x: 0, y: -2, width: 14, height: 14)
             result.append(NSAttributedString(attachment: attachment))
-            result.append(NSAttributedString(string: " "))
+            if !title.isEmpty {
+                result.append(NSAttributedString(string: " "))
+            }
         }
-        result.append(NSAttributedString(
+        result.append(statusText(title))
+        return result
+    }
+
+    private func statusText(_ title: String) -> NSAttributedString {
+        let color: NSColor = settings.showColoredUsageIndicators && !settings.monochromeIcons ? .controlAccentColor : .labelColor
+        return NSAttributedString(
             string: title,
             attributes: [
                 .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .semibold),
-                .foregroundColor: NSColor.labelColor,
+                .foregroundColor: color,
             ]
-        ))
-        return result
+        )
     }
 
     private func iconName(for providerID: ProviderID) -> String {

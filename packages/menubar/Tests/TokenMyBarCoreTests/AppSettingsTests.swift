@@ -44,3 +44,29 @@ private func freshSettings() -> AppSettings {
     settings.launchAtLogin = true
     #expect(settings.launchAtLogin)
 }
+
+@Test func appSettingsPersistsMenuBarPreferences() {
+    let settings = freshSettings()
+    #expect(settings.displayMode == .iconPercentage)
+    #expect(settings.summaryCalculation == .highestUsage)
+    #expect(settings.showProviderOrder)
+    #expect(settings.monochromeIcons)
+
+    settings.displayMode = .summary
+    settings.summaryCalculation = .averageUsage
+    settings.hideLabelsWhenSpaceLimited = true
+    settings.collapseToSummaryAutomatically = true
+    settings.showProviderOrder = false
+    settings.showColoredUsageIndicators = true
+    settings.monochromeIcons = false
+    settings.originalColoredIcons = true
+
+    #expect(settings.displayMode == .summary)
+    #expect(settings.summaryCalculation == .averageUsage)
+    #expect(settings.hideLabelsWhenSpaceLimited)
+    #expect(settings.collapseToSummaryAutomatically)
+    #expect(!settings.showProviderOrder)
+    #expect(settings.showColoredUsageIndicators)
+    #expect(!settings.monochromeIcons)
+    #expect(settings.originalColoredIcons)
+}

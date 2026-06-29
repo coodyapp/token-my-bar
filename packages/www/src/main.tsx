@@ -1,83 +1,113 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { Activity, Lock, MonitorUp } from "lucide-react";
+import { BarChart3, Clock3, Code2, MoreHorizontal, RefreshCw, ShieldCheck, Sparkles, Terminal } from "lucide-react";
 import "./styles.css";
 
 const pillars = [
   {
-    icon: Activity,
-    title: "Near-live usage",
-    body: "Codex, Claude Code, and OpenCode token usage in one menu bar item.",
+    icon: BarChart3,
+    title: "Native menu bar",
+    body: "Vendor icons and usage percentages render like a macOS status item.",
   },
   {
-    icon: Lock,
+    icon: ShieldCheck,
     title: "Local first",
-    body: "No cloud account, zero telemetry, no browser cookies in MVP.",
+    body: "Reads existing sessions on your Mac and avoids secret storage in cache.",
   },
   {
-    icon: MonitorUp,
-    title: "Native macOS",
-    body: "Swift menu bar app built for low idle CPU, fast launch, and simple installs.",
+    icon: Sparkles,
+    title: "Configurable display",
+    body: "Choose icon plus percentage, summary, percentage-only, or icons-only.",
   },
+];
+
+const vendors = [
+  { icon: Code2, name: "OpenCode", auth: "OpenCode cookie", rows: [["Rolling Usage", "0% used", "Resets in 5h 0m", 2], ["Weekly Usage", "8% used", "Resets in 6d 4h", 8], ["Monthly Usage", "6% used", "Resets in 22d 21h", 6]] },
+  { icon: Terminal, name: "OpenAI Codex", auth: "Codex OAuth", plan: "Plus", rows: [["Session", "27% used", "Resets in 3h 2m", 27], ["Weekly Usage", "14% used", "Resets in 6d 4h", 14], ["Monthly Usage", "5% used", "Resets in 22d 21h", 5]] },
 ];
 
 function App() {
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className="min-h-screen overflow-hidden bg-background text-foreground">
       <section className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 py-10 sm:px-10 lg:px-12">
         <nav className="flex items-center justify-between text-sm text-muted-foreground">
           <span className="font-semibold text-foreground">TokenMyBar</span>
-          <span>macOS 14+</span>
+          <span className="rounded-full border border-border/70 bg-white/5 px-3 py-1">macOS 14+</span>
         </nav>
 
         <div className="grid flex-1 items-center gap-12 py-20 lg:grid-cols-[1.1fr_0.9fr]">
           <div>
-            <p className="mb-5 inline-flex rounded-full border border-border px-3 py-1 text-sm text-muted-foreground">
-              OpenAI Codex · Claude Code · OpenCode
+            <p className="mb-5 inline-flex rounded-full border border-border/70 bg-white/5 px-3 py-1 text-sm text-muted-foreground backdrop-blur">
+              OpenCode · Codex · Claude
             </p>
             <h1 className="max-w-3xl text-5xl font-semibold tracking-tight sm:text-6xl lg:text-7xl">
-              Your AI token usage, always in your Mac menu bar.
+              Native AI usage in your Mac menu bar.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-muted-foreground">
-              TokenMyBar does one thing perfectly: it turns your live AI token usage into a single, glanceable application right in your Mac&apos;s menu bar.
+              TokenMyBar shows vendor icons, percentages, reset windows, and summaries using a macOS-native popover and status item.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <a className="rounded-full bg-primary px-5 py-3 text-sm font-medium text-primary-foreground" href="/docs/ideia.md">
-                Read project idea
+              <a className="rounded-full bg-primary px-5 py-3 text-sm font-medium text-primary-foreground" href="/docs/user-guide.md">
+                Read user guide
               </a>
-              <a className="rounded-full border border-border px-5 py-3 text-sm font-medium" href="https://github.com/">
-                GitHub soon
+              <a className="rounded-full border border-border px-5 py-3 text-sm font-medium" href="https://github.com/coodyapp/token-my-bar">
+                GitHub
               </a>
             </div>
           </div>
 
-          <div className="rounded-[2rem] border border-border bg-white/60 p-5 shadow-2xl shadow-black/10 backdrop-blur dark:bg-white/5">
-            <div className="rounded-[1.5rem] bg-zinc-950 p-4 text-white">
-              <div className="mb-5 flex h-7 items-center gap-2 rounded-full bg-zinc-900 px-3 text-sm text-zinc-300">
-                <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                12% | 18% | 9%
+          <div className="rounded-[1.375rem] border border-border bg-popover/85 shadow-2xl shadow-black/40 backdrop-blur-2xl">
+            <div className="flex items-center gap-4 border-b border-border px-6 py-5">
+              <BarChart3 className="h-9 w-9 text-red-400" />
+              <div>
+                <div className="text-[17px] font-bold">TokenMyBar</div>
+                <div className="mt-1 flex items-center gap-2 text-[13px] font-semibold text-muted-foreground">
+                  <Clock3 className="h-3.5 w-3.5" /> Updated 4 min ago
+                </div>
               </div>
-              <div className="space-y-3">
-                {['OpenAI Codex', 'Claude Code', 'OpenCode'].map((vendor, index) => (
-                  <div key={vendor} className="rounded-2xl bg-zinc-900 p-4">
-                    <div className="flex items-center justify-between text-sm">
-                      <span>{vendor}</span>
-                      <span className="text-zinc-400">{['local', 'local', 'local'][index]}</span>
-                    </div>
-                    <div className="mt-3 h-2 rounded-full bg-zinc-800">
-                      <div className="h-2 rounded-full bg-emerald-400/40" style={{ width: `${[12, 18, 9][index]}%` }} />
-                    </div>
+              <div className="ml-auto flex items-center gap-5 text-muted-foreground">
+                <RefreshCw className="h-5 w-5" />
+                <MoreHorizontal className="h-6 w-6" />
+              </div>
+            </div>
+            <div className="space-y-5 px-6 py-5">
+              {vendors.map((vendor) => (
+                <section key={vendor.name} className="border-b border-border pb-5 last:border-0 last:pb-0">
+                  <div className="mb-3 flex items-center gap-3">
+                    <vendor.icon className="h-6 w-6" />
+                    <div className="text-[17px] font-bold">{vendor.name}</div>
+                    {vendor.plan ? <span className="text-[13px] font-semibold text-muted-foreground">{vendor.plan}</span> : null}
+                    <span className="ml-auto rounded-full bg-emerald-500/15 px-3 py-1 text-sm font-bold text-emerald-400">OK</span>
                   </div>
-                ))}
-              </div>
+                  <div className="mb-4 pl-9 text-sm font-semibold text-muted-foreground">{vendor.auth}</div>
+                  <div className="space-y-4">
+                    {vendor.rows.map(([title, used, reset, width]) => (
+                      <div key={title} className="grid grid-cols-[26px_88px_1fr_116px] items-center gap-x-3 gap-y-2">
+                        <Clock3 className="h-4 w-4 text-muted-foreground" />
+                        <div className="col-span-3 text-[15px] font-bold">{title}</div>
+                        <div />
+                        <div className="text-sm font-semibold text-muted-foreground">{used}</div>
+                        <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                          <div className="h-full rounded-full bg-red-400" style={{ width: `${width}%` }} />
+                        </div>
+                        <div className="text-right text-sm font-semibold text-muted-foreground">{reset}</div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+            <div className="flex items-center gap-3 border-t border-border px-6 py-4 text-sm font-semibold text-muted-foreground">
+              Usage resets follow each vendor&apos;s schedule.
+              <button className="ml-auto rounded-lg bg-white/10 px-4 py-2 text-foreground">Manage Tokens…</button>
             </div>
           </div>
         </div>
 
         <div className="grid gap-4 pb-10 md:grid-cols-3">
           {pillars.map((pillar) => (
-            <article key={pillar.title} className="rounded-3xl border border-border bg-white/60 p-6 dark:bg-white/5">
-              <pillar.icon className="h-5 w-5" />
+            <article key={pillar.title} className="rounded-3xl border border-border bg-white/5 p-6 backdrop-blur">
+              <pillar.icon className="h-5 w-5 text-red-400" />
               <h2 className="mt-4 font-semibold">{pillar.title}</h2>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">{pillar.body}</p>
             </article>

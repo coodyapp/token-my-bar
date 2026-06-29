@@ -11,6 +11,7 @@ export default {
         muted: "hsl(var(--muted))",
         "muted-foreground": "hsl(var(--muted-foreground))",
         border: "hsl(var(--border))",
+        popover: "hsl(var(--popover))",
         primary: "hsl(var(--primary))",
         "primary-foreground": "hsl(var(--primary-foreground))",
       },

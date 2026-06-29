@@ -26,6 +26,42 @@ public enum RefreshInterval: Int, CaseIterable, Codable, Sendable, Identifiable 
     }
 }
 
+public enum DisplayMode: String, CaseIterable, Codable, Sendable, Identifiable {
+    case iconPercentage
+    case percentageOnly
+    case iconsOnly
+    case summary
+    case custom
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .iconPercentage: "Icon + Percentage"
+        case .percentageOnly: "Percentage Only"
+        case .iconsOnly: "Icons Only"
+        case .summary: "Summary"
+        case .custom: "Custom"
+        }
+    }
+}
+
+public enum SummaryCalculation: String, CaseIterable, Codable, Sendable, Identifiable {
+    case highestUsage
+    case averageUsage
+    case selectedProvider
+
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .highestUsage: "Highest Usage"
+        case .averageUsage: "Average Usage"
+        case .selectedProvider: "Selected Provider"
+        }
+    }
+}
+
 /// Persisted application settings backed by `UserDefaults`.
 ///
 /// Pure value access lives here so it can be unit tested with an in-memory
@@ -35,6 +71,14 @@ public struct AppSettings {
         static let refreshInterval = "refreshInterval"
         static let launchAtLogin = "launchAtLogin"
         static let disabledProviders = "disabledProviders"
+        static let displayMode = "displayMode"
+        static let summaryCalculation = "summaryCalculation"
+        static let hideLabelsWhenSpaceLimited = "hideLabelsWhenSpaceLimited"
+        static let collapseToSummaryAutomatically = "collapseToSummaryAutomatically"
+        static let showProviderOrder = "showProviderOrder"
+        static let showColoredUsageIndicators = "showColoredUsageIndicators"
+        static let monochromeIcons = "monochromeIcons"
+        static let originalColoredIcons = "originalColoredIcons"
     }
 
     private let defaults: UserDefaults
@@ -54,6 +98,58 @@ public struct AppSettings {
     public var launchAtLogin: Bool {
         get { defaults.bool(forKey: Key.launchAtLogin) }
         nonmutating set { defaults.set(newValue, forKey: Key.launchAtLogin) }
+    }
+
+    public var displayMode: DisplayMode {
+        get {
+            guard let raw = defaults.string(forKey: Key.displayMode) else { return .iconPercentage }
+            return DisplayMode(rawValue: raw) ?? .iconPercentage
+        }
+        nonmutating set { defaults.set(newValue.rawValue, forKey: Key.displayMode) }
+    }
+
+    public var summaryCalculation: SummaryCalculation {
+        get {
+            guard let raw = defaults.string(forKey: Key.summaryCalculation) else { return .highestUsage }
+            return SummaryCalculation(rawValue: raw) ?? .highestUsage
+        }
+        nonmutating set { defaults.set(newValue.rawValue, forKey: Key.summaryCalculation) }
+    }
+
+    public var hideLabelsWhenSpaceLimited: Bool {
+        get { defaults.bool(forKey: Key.hideLabelsWhenSpaceLimited) }
+        nonmutating set { defaults.set(newValue, forKey: Key.hideLabelsWhenSpaceLimited) }
+    }
+
+    public var collapseToSummaryAutomatically: Bool {
+        get { defaults.bool(forKey: Key.collapseToSummaryAutomatically) }
+        nonmutating set { defaults.set(newValue, forKey: Key.collapseToSummaryAutomatically) }
+    }
+
+    public var showProviderOrder: Bool {
+        get {
+            guard defaults.object(forKey: Key.showProviderOrder) != nil else { return true }
+            return defaults.bool(forKey: Key.showProviderOrder)
+        }
+        nonmutating set { defaults.set(newValue, forKey: Key.showProviderOrder) }
+    }
+
+    public var showColoredUsageIndicators: Bool {
+        get { defaults.bool(forKey: Key.showColoredUsageIndicators) }
+        nonmutating set { defaults.set(newValue, forKey: Key.showColoredUsageIndicators) }
+    }
+
+    public var monochromeIcons: Bool {
+        get {
+            guard defaults.object(forKey: Key.monochromeIcons) != nil else { return true }
+            return defaults.bool(forKey: Key.monochromeIcons)
+        }
+        nonmutating set { defaults.set(newValue, forKey: Key.monochromeIcons) }
+    }
+
+    public var originalColoredIcons: Bool {
+        get { defaults.bool(forKey: Key.originalColoredIcons) }
+        nonmutating set { defaults.set(newValue, forKey: Key.originalColoredIcons) }
     }
 
     public func isProviderEnabled(_ id: ProviderID) -> Bool {

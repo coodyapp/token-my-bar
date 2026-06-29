@@ -32,8 +32,10 @@ struct PopoverView: View {
             header
             Divider()
             content
+            Divider()
+            footer
         }
-        .frame(width: 320, height: contentHeight)
+        .frame(width: 620, height: contentHeight)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(.regularMaterial)
@@ -54,13 +56,18 @@ struct PopoverView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 10) {
+        HStack(alignment: .center, spacing: 16) {
+            Image(systemName: "chart.bar.xaxis")
+                .font(.system(size: 30, weight: .bold))
+                .foregroundStyle(.red)
+                .frame(width: 40)
+
             VStack(alignment: .leading, spacing: 5) {
                 Text("TokenMyBar")
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(.primary)
                 Label("Updated \(updatedText)", systemImage: "clock")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.secondary)
                     .labelStyle(.titleAndIcon)
             }
@@ -73,10 +80,10 @@ struct PopoverView: View {
                             .scaleEffect(0.62)
                     } else {
                         Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 15, weight: .semibold))
+                            .font(.system(size: 18, weight: .semibold))
                     }
                 }
-                .frame(width: 28, height: 28)
+                .frame(width: 34, height: 34)
             }
             .buttonStyle(.borderless)
             .foregroundStyle(.primary)
@@ -90,8 +97,8 @@ struct PopoverView: View {
                 Divider()
                 Button("Quit TokenMyBar", action: actions.onQuit)
             } label: {
-                Image(systemName: "ellipsis.circle")
-                    .font(.system(size: 18, weight: .regular))
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 22, weight: .bold))
                     .foregroundStyle(.primary)
             }
             .menuStyle(.borderlessButton)
@@ -99,9 +106,9 @@ struct PopoverView: View {
             .fixedSize()
             .accessibilityLabel("More actions")
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 12)
-        .padding(.bottom, 10)
+        .padding(.horizontal, 24)
+        .padding(.top, 20)
+        .padding(.bottom, 18)
     }
 
     @ViewBuilder
@@ -126,12 +133,16 @@ struct PopoverView: View {
                         Color.clear
                             .frame(height: 0)
                             .id("top")
-                        ForEach(activeSnapshots) { snapshot in
+                        ForEach(Array(activeSnapshots.enumerated()), id: \.element.id) { index, snapshot in
                             VendorSection(snapshot: snapshot)
+                            if index < activeSnapshots.count - 1 {
+                                Divider()
+                                    .overlay(Color(nsColor: .separatorColor).opacity(0.55))
+                            }
                         }
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 18)
                 }
                 .onAppear {
                     DispatchQueue.main.async {
@@ -140,6 +151,22 @@ struct PopoverView: View {
                 }
             }
         }
+    }
+
+    private var footer: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "info.circle")
+                .foregroundStyle(.secondary)
+            Text("Usage resets are based on each vendor's schedule.")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.secondary)
+            Spacer()
+            Button("Manage Tokens…", action: actions.onSettings)
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 14)
     }
 
 }
@@ -155,43 +182,42 @@ private struct VendorSection: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .center, spacing: 10) {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .center, spacing: 12) {
                 Image(systemName: iconName)
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: 24, weight: .semibold))
                     .foregroundStyle(.primary)
-                    .frame(width: 22)
+                    .frame(width: 28)
                 Text(snapshot.displayName)
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(.primary)
                 if let plan = snapshot.planName {
                     Text(plan)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
                 Text(snapshot.status.label)
-                    .font(.system(size: 12, weight: .bold))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
+                    .font(.system(size: 14, weight: .bold))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
                     .background(statusColor.opacity(0.18), in: Capsule())
                     .foregroundStyle(statusColor)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.secondary)
             }
 
             if let authSummary = snapshot.authSummary {
                 Text(authSummary)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.secondary)
+                    .padding(.leading, 40)
             }
 
-            VStack(spacing: 0) {
+            VStack(spacing: 18) {
                 ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
                     UsageRowView(row: row, isStale: isStale)
-                    if index < rows.count - 1 {
-                        Divider()
-                            .overlay(Color(nsColor: .separatorColor).opacity(0.55))
-                            .padding(.vertical, 12)
-                    }
                 }
             }
         }
@@ -239,37 +265,37 @@ private struct UsageRowView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
+        Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 8) {
+            GridRow(alignment: .center) {
                 if let iconName = row.iconName {
                     Image(systemName: iconName)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(.secondary)
-                        .frame(width: 20)
+                        .frame(width: 26)
+                } else {
+                    Color.clear.frame(width: 26)
                 }
                 Text(row.title)
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(.primary)
-                Spacer()
-                if row.percent == nil {
-                    Text(row.value)
-                        .font(.system(size: 12, weight: .semibold).monospacedDigit())
-                        .foregroundStyle(isStale ? .secondary : .primary)
-                }
+                    .gridCellColumns(2)
             }
 
-            UsageMeter(percent: clampedPercent ?? 0, color: isStale ? .secondary : barColor)
-                .frame(height: 5)
-
-            HStack(alignment: .firstTextBaseline) {
+            GridRow(alignment: .center) {
+                Color.clear.frame(width: 26)
                 Text(usedText)
-                    .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                    .font(.system(size: 14, weight: .semibold).monospacedDigit())
                     .foregroundStyle(.secondary)
-                Spacer()
+                    .frame(width: 64, alignment: .leading)
+                UsageMeter(percent: clampedPercent ?? 0, color: isStale ? .secondary : barColor)
+                    .frame(height: 5)
                 if let detail = row.detail {
                     Text(detail)
-                        .font(.system(size: 12, weight: .semibold).monospacedDigit())
+                        .font(.system(size: 14, weight: .semibold).monospacedDigit())
                         .foregroundStyle(.secondary)
+                        .frame(width: 110, alignment: .trailing)
+                } else {
+                    Color.clear.frame(width: 110)
                 }
             }
         }
