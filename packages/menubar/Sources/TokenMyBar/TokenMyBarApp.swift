@@ -97,15 +97,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func estimatedPopoverHeight() -> CGFloat {
         let active = snapshots.filter { $0.status == .ok || $0.status == .stale }
-        guard !active.isEmpty else { return 210 }
+        guard !active.isEmpty else { return 180 }
 
-        let headerHeight: CGFloat = 96
-        let bottomPadding: CGFloat = 22
+        let headerHeight: CGFloat = 68
+        let bottomPadding: CGFloat = 10
         let dividers = CGFloat(active.count)
         let vendorHeights = active.reduce(CGFloat(0)) { total, snapshot in
             let rowCount = max(snapshot.usageRows.count, 1)
-            let rowSpacing = CGFloat(max(0, rowCount - 1)) * 22
-            return total + 44 + 28 + 26 + CGFloat(rowCount) * 39 + rowSpacing
+            let rowSpacing = CGFloat(max(0, rowCount - 1)) * 14
+            return total + 28 + 16 + 14 + CGFloat(rowCount) * 32 + rowSpacing
         }
         return headerHeight + dividers + bottomPadding + vendorHeights
     }

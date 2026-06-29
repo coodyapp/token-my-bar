@@ -59,7 +59,6 @@ private func freshSettings() -> AppSettings {
     settings.showProviderOrder = false
     settings.showColoredUsageIndicators = true
     settings.monochromeIcons = false
-    settings.originalColoredIcons = true
 
     #expect(settings.displayMode == .summary)
     #expect(settings.summaryCalculation == .averageUsage)
@@ -68,5 +67,4 @@ private func freshSettings() -> AppSettings {
     #expect(!settings.showProviderOrder)
     #expect(settings.showColoredUsageIndicators)
     #expect(!settings.monochromeIcons)
-    #expect(settings.originalColoredIcons)
 }

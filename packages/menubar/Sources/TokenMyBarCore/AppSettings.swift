@@ -78,7 +78,6 @@ public struct AppSettings {
         static let showProviderOrder = "showProviderOrder"
         static let showColoredUsageIndicators = "showColoredUsageIndicators"
         static let monochromeIcons = "monochromeIcons"
-        static let originalColoredIcons = "originalColoredIcons"
     }
 
     private let defaults: UserDefaults
@@ -145,11 +144,6 @@ public struct AppSettings {
             return defaults.bool(forKey: Key.monochromeIcons)
         }
         nonmutating set { defaults.set(newValue, forKey: Key.monochromeIcons) }
-    }
-
-    public var originalColoredIcons: Bool {
-        get { defaults.bool(forKey: Key.originalColoredIcons) }
-        nonmutating set { defaults.set(newValue, forKey: Key.originalColoredIcons) }
     }
 
     public func isProviderEnabled(_ id: ProviderID) -> Bool {

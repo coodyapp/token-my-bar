@@ -33,8 +33,7 @@ struct PopoverView: View {
         VStack(spacing: 0) {
             header
             Divider()
-                .overlay(Color(nsColor: .separatorColor).opacity(0.82))
-                .padding(.horizontal, 20)
+                .overlay(Color(nsColor: .separatorColor).opacity(1.0))
             content
         }
         .frame(width: popoverWidth, height: contentHeight)
@@ -53,21 +52,21 @@ struct PopoverView: View {
     private var header: some View {
         HStack(alignment: .center, spacing: 14) {
             Image(systemName: "chart.bar.xaxis")
-                .font(.system(size: 22, weight: .semibold))
+                .font(.system(size: 18, weight: .semibold))
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(.red)
-                .frame(width: 52, height: 52)
+                .frame(width: 40, height: 40)
                 .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .fill(Color.red.opacity(0.12))
                 )
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text("TokenMyBar")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.primary)
                 Text("Updated \(updatedText)")
-                    .font(.system(size: 12, weight: .regular))
+                    .font(.system(size: 11, weight: .regular))
                     .foregroundStyle(.secondary)
             }
 
@@ -90,10 +89,10 @@ struct PopoverView: View {
                 .keyboardShortcut(",", modifiers: .command)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 22)
-        .padding(.bottom, 18)
-        .frame(height: 96)
+        .padding(.horizontal, 16)
+        .padding(.top, 14)
+        .padding(.bottom, 10)
+        .frame(height: 68)
     }
 
     @ViewBuilder
@@ -111,9 +110,9 @@ struct PopoverView: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 22)
-            .padding(.bottom, 22)
+            .padding(.horizontal, 16)
+            .padding(.top, 14)
+            .padding(.bottom, 14)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             ScrollView(showsIndicators: false) {
@@ -122,12 +121,11 @@ struct PopoverView: View {
                         VendorSection(snapshot: snapshot)
                         if snapshot.id != activeSnapshots.last?.id {
                             Divider()
-                                .overlay(Color(nsColor: .separatorColor).opacity(0.82))
-                                .padding(.horizontal, 20)
+                                .overlay(Color(nsColor: .separatorColor).opacity(1.0))
                         }
                     }
                 }
-                .padding(.bottom, 22)
+                .padding(.bottom, 10)
             }
         }
     }
@@ -152,13 +150,13 @@ private struct HeaderButton: View {
                         .scaleEffect(0.82)
                 } else {
                     Image(systemName: systemName)
-                        .font(.system(size: 15, weight: .medium))
+                        .font(.system(size: 14, weight: .medium))
                         .symbolRenderingMode(.hierarchical)
                         .foregroundStyle(.secondary)
                 }
             }
-            .frame(width: 48, height: 48)
-            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .frame(width: 40, height: 40)
+            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
@@ -179,29 +177,29 @@ private struct VendorSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             headerRow
-                .padding(.bottom, 26)
+                .padding(.bottom, 16)
 
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 14) {
                 ForEach(rows, id: \.id) { row in
                     UsageRowView(row: row, isStale: isStale)
                 }
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 22)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
     }
 
     private var headerRow: some View {
         HStack(alignment: .center, spacing: 16) {
             Image(systemName: iconName)
-                .font(.system(size: 16, weight: .semibold))
+                .font(.system(size: 15, weight: .semibold))
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(.primary)
-                .frame(width: 28, height: 28)
+                .frame(width: 24, height: 24)
 
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(snapshot.displayName)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
 
@@ -254,34 +252,34 @@ private struct UsageRowView: View {
     var body: some View {
         HStack(alignment: .center, spacing: 0) {
             Image(systemName: metricIconName)
-                .font(.system(size: 16, weight: .regular))
+                .font(.system(size: 14, weight: .regular))
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(.secondary)
-                .frame(width: 28, height: 28)
-                .padding(.trailing, 16)
+                .frame(width: 24, height: 24)
+                .padding(.trailing, 12)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(metricTitle)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                 Text(resetText)
-                    .font(.system(size: 12, weight: .regular))
+                    .font(.system(size: 11, weight: .regular))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
-            .frame(width: 102, alignment: .leading)
+            .frame(width: 100, alignment: .leading)
 
-            Spacer(minLength: 12)
+            Spacer(minLength: 8)
 
             UsageMeter(percent: clampedPercent ?? 0, color: isStale ? Color(nsColor: .systemGray) : barColor)
-                .frame(width: 220, height: 10)
+                .frame(width: 220, height: 8)
 
             Text(percentText)
-                .font(.system(size: 14, weight: .regular).monospacedDigit())
+                .font(.system(size: 13, weight: .regular).monospacedDigit())
                 .foregroundStyle(.secondary)
-                .frame(width: 44, alignment: .trailing)
-                .padding(.leading, 18)
+                .frame(width: 40, alignment: .trailing)
+                .padding(.leading, 12)
                 .lineLimit(1)
         }
         .accessibilityElement(children: .combine)

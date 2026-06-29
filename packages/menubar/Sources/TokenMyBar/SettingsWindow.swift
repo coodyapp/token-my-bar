@@ -97,10 +97,6 @@ final class SettingsModel: ObservableObject {
         didSet { settings.monochromeIcons = monochromeIcons; onDisplayPreferencesChange() }
     }
 
-    @Published var originalColoredIcons: Bool {
-        didSet { settings.originalColoredIcons = originalColoredIcons; onDisplayPreferencesChange() }
-    }
-
     private let settings: AppSettings
     private let launchAtLogin: LaunchAtLoginManager
     private let onRefreshIntervalChange: () -> Void
@@ -129,7 +125,6 @@ final class SettingsModel: ObservableObject {
         self.showProviderOrder = settings.showProviderOrder
         self.showColoredUsageIndicators = settings.showColoredUsageIndicators
         self.monochromeIcons = settings.monochromeIcons
-        self.originalColoredIcons = settings.originalColoredIcons
     }
 
     func bindingForVendor(_ id: ProviderID) -> Binding<Bool> {
@@ -182,7 +177,6 @@ struct SettingsView: View {
                 Toggle("Show provider order", isOn: $model.showProviderOrder)
                 Toggle("Show colored usage indicators", isOn: $model.showColoredUsageIndicators)
                 Toggle("Monochrome icons (follow macOS menu bar style)", isOn: $model.monochromeIcons)
-                Toggle("Use original colored icons", isOn: $model.originalColoredIcons)
             }
 
             Section("Refresh") {
