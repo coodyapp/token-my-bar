@@ -7,6 +7,9 @@ import TokenMyBarCore
 @main
 struct TokenMyBarApp {
     static func main() {
+        #if DEBUG
+        if MainActor.assumeIsolated({ PreviewSnapshot.renderIfRequested() }) { return }
+        #endif
         let app = NSApplication.shared
         let delegate = AppDelegate()
         app.delegate = delegate

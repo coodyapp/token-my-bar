@@ -11,15 +11,15 @@ struct PopoverActions {
 }
 
 /// Native macOS menu-bar popover, modeled on Control Center / Wi-Fi / Sound menus.
-/// Layout is driven entirely by spacing — no cards, no shadows beyond the system material.
+/// Compact native typography, tight vertical rhythm, layout driven by spacing — no cards.
 struct PopoverView: View {
     let snapshots: [ProviderSnapshot]
     let actions: PopoverActions
 
     private enum Metrics {
-        static let popoverWidth: CGFloat = 480
-        static let cornerRadius: CGFloat = 24
-        static let contentHorizontal: CGFloat = 20
+        static let popoverWidth: CGFloat = 380
+        static let cornerRadius: CGFloat = 14
+        static let contentHorizontal: CGFloat = 14
     }
 
     private var activeSnapshots: [ProviderSnapshot] {
@@ -52,7 +52,7 @@ struct PopoverView: View {
         .clipShape(RoundedRectangle(cornerRadius: Metrics.cornerRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: Metrics.cornerRadius, style: .continuous)
-                .stroke(Color(nsColor: .separatorColor).opacity(0.22), lineWidth: 1)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.20), lineWidth: 1)
         )
     }
 
@@ -80,29 +80,29 @@ private struct HeaderView: View {
     let onSettings: () -> Void
 
     var body: some View {
-        HStack(alignment: .center, spacing: 16) {
+        HStack(alignment: .center, spacing: 10) {
             // App logo — original red, never monochrome.
             Image(systemName: "chart.bar.xaxis")
-                .font(.system(size: 38, weight: .bold))
+                .font(.system(size: 20, weight: .bold))
                 .symbolRenderingMode(.monochrome)
                 .foregroundStyle(.red)
-                .frame(width: 52, height: 52)
+                .frame(width: 28, height: 28)
                 .accessibilityHidden(true)
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text("TokenMyBar")
-                    .font(.system(size: 22, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.primary)
 
                 Label("Updated \(updatedText)", systemImage: "clock")
                     .labelStyle(.titleAndIcon)
-                    .font(.system(size: 14))
+                    .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
 
-            Spacer(minLength: 12)
+            Spacer(minLength: 8)
 
-            HStack(spacing: 8) {
+            HStack(spacing: 2) {
                 HeaderButton(
                     systemName: "arrow.clockwise",
                     isLoading: isRefreshing,
@@ -119,11 +119,12 @@ private struct HeaderView: View {
                 .keyboardShortcut(",", modifiers: .command)
             }
         }
-        .padding(.top, 20)
-        .padding(.bottom, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 10)
     }
 }
 
+/// Borderless icon button with hover highlight — the Control Center / toolbar idiom.
 private struct HeaderButton: View {
     let systemName: String
     var isLoading = false
@@ -134,27 +135,24 @@ private struct HeaderButton: View {
     var body: some View {
         Button(action: action) {
             ZStack {
-                Circle()
-                    .fill(Color.primary.opacity(isHovered ? 0.12 : 0))
-                Circle()
-                    .stroke(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(Color.primary.opacity(isHovered ? 0.10 : 0))
 
                 if isLoading {
                     ProgressView()
                         .controlSize(.small)
-                        .scaleEffect(0.85)
+                        .scaleEffect(0.7)
                 } else {
                     Image(systemName: systemName)
-                        .font(.system(size: 17, weight: .medium))
+                        .font(.system(size: 13, weight: .medium))
                         .symbolRenderingMode(.monochrome)
                         .foregroundStyle(.secondary)
                 }
             }
-            .frame(width: 38, height: 38)
-            .contentShape(Circle())
+            .frame(width: 26, height: 26)
+            .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         }
         .buttonStyle(.plain)
-        .frame(width: 48, height: 48)
         .onHover { isHovered = $0 }
         .accessibilityLabel(accessibilityLabel)
     }
@@ -175,16 +173,16 @@ private struct VendorSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VendorHeader(snapshot: snapshot)
-                .padding(.bottom, 26)
+                .padding(.bottom, 10)
 
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 10) {
                 ForEach(rows, id: \.id) { row in
                     UsageRowView(row: row, isStale: isStale)
                 }
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 22)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(snapshot.displayName)
     }
@@ -194,15 +192,15 @@ private struct VendorHeader: View {
     let snapshot: ProviderSnapshot
 
     var body: some View {
-        HStack(alignment: .center, spacing: 16) {
+        HStack(alignment: .center, spacing: 8) {
             Image(systemName: iconName)
-                .font(.system(size: 20, weight: .semibold))
+                .font(.system(size: 13, weight: .semibold))
                 .symbolRenderingMode(.monochrome)
                 .foregroundStyle(.primary)
-                .frame(width: 28, height: 28)
+                .frame(width: 18, height: 18)
 
             Text(snapshot.displayName)
-                .font(.system(size: 22, weight: .semibold))
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(.primary)
                 .lineLimit(1)
 
@@ -210,7 +208,7 @@ private struct VendorHeader: View {
                 PlanBadge(text: plan)
             }
 
-            Spacer(minLength: 12)
+            Spacer(minLength: 8)
 
             StatusBadge(status: snapshot.status)
         }
@@ -231,10 +229,10 @@ private struct PlanBadge: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 14, weight: .medium))
+            .font(.system(size: 10, weight: .medium))
             .foregroundStyle(.secondary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
             .background(Capsule().fill(Color.secondary.opacity(0.18)))
             .accessibilityLabel("Plan \(text)")
     }
@@ -244,27 +242,19 @@ private struct PlanBadge: View {
 private struct StatusBadge: View {
     let status: ProviderStatus
 
-    private var tint: Color {
-        status == .ok ? .green : .yellow
-    }
-
-    private var iconName: String {
-        status == .ok ? "checkmark.circle" : "clock"
-    }
-
-    private var label: String {
-        status == .ok ? "OK" : "Stale"
-    }
+    private var tint: Color { status == .ok ? .green : .yellow }
+    private var iconName: String { status == .ok ? "checkmark.circle" : "clock" }
+    private var label: String { status == .ok ? "OK" : "Stale" }
 
     var body: some View {
         Label(label, systemImage: iconName)
             .labelStyle(.titleAndIcon)
-            .font(.system(size: 13, weight: .semibold))
+            .font(.system(size: 11, weight: .semibold))
             .foregroundStyle(tint)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 2.5)
             .background(Capsule().fill(tint.opacity(0.14)))
-            .overlay(Capsule().stroke(tint.opacity(0.75), lineWidth: 1))
+            .overlay(Capsule().stroke(tint.opacity(0.55), lineWidth: 1))
             .accessibilityLabel(label)
     }
 }
@@ -290,33 +280,34 @@ private struct UsageRowView: View {
     var body: some View {
         HStack(spacing: 0) {
             Image(systemName: metricIconName)
-                .font(.system(size: 18, weight: .regular))
+                .font(.system(size: 13, weight: .regular))
                 .symbolRenderingMode(.monochrome)
                 .foregroundStyle(.secondary)
-                .frame(width: 28, height: 28)
+                .frame(width: 20, height: 20)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(metricTitle)
-                    .font(.system(size: 17, weight: .medium))
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                 Text(resetText)
-                    .font(.system(size: 14))
+                    .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
-            .padding(.leading, 16)
+            .padding(.leading, 9)
+            .fixedSize(horizontal: true, vertical: false)
 
             Spacer(minLength: 12)
 
             ProgressBar(percent: clampedPercent ?? 0, isStale: isStale)
-                .frame(width: 220, height: 10)
+                .frame(width: 150, height: 6)
 
             Text(percentText)
-                .font(.system(size: 17).monospacedDigit())
+                .font(.system(size: 12).monospacedDigit())
                 .foregroundStyle(.secondary)
-                .frame(width: 48, alignment: .trailing)
-                .padding(.leading, 18)
+                .frame(width: 38, alignment: .trailing)
+                .padding(.leading, 10)
                 .lineLimit(1)
         }
         .accessibilityElement(children: .combine)
@@ -376,21 +367,21 @@ private struct ProgressBar: View {
 
 private struct EmptyStateView: View {
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 8) {
             Image(systemName: "tray")
-                .font(.system(size: 24, weight: .semibold))
+                .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(.secondary)
             Text("No active vendors")
-                .font(.system(size: 17, weight: .semibold))
+                .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(.primary)
             Text("Enable a vendor in Settings or refresh usage.")
-                .font(.system(size: 14))
+                .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .padding(.horizontal, 20)
-        .padding(.vertical, 40)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 28)
     }
 }
 
