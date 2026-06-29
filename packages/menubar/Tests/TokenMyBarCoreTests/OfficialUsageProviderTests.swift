@@ -2,6 +2,8 @@ import Testing
 @testable import TokenMyBarCore
 
 @Test func codexOAuthSnapshotReadsRateLimitWindows() {
+    // ChatGPT reports percent *remaining*; the provider inverts to *used* so
+    // Codex counts up 0→100 like the other vendors (12.4% left → 87.6% used).
     let snapshot = CodexOAuthUsageProvider.snapshot(from: [
         "rate_limit": [
             "primary_window": ["usagePercent": 12.4, "resetInSec": 3600],
@@ -11,9 +13,9 @@ import Testing
 
     #expect(snapshot.status == .ok)
     #expect(snapshot.primarySource == .oauth)
-    #expect(snapshot.usagePercent == 12.4)
+    #expect(snapshot.usagePercent == 87.6)
     #expect(snapshot.usageRows.map(\.key) == ["session", "weekly"])
-    #expect(snapshot.usageRows.first?.value == "12%")
+    #expect(snapshot.usageRows.first?.value == "88%")
 }
 
 @Test func claudeOAuthSnapshotReadsExpectedWindows() {

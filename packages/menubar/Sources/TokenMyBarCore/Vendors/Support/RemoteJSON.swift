@@ -65,16 +65,20 @@ enum RemoteJSON {
 
     /// Returns a usage percentage normalized to the 0...100 range.
     ///
-    /// Providers report percentages as either 0...100 (Codex `used_percent`,
-    /// Claude `utilization`, OpenCode `usagePercent`) or as a 0...1 fraction.
-    /// Values in 0...1 are treated as fractions and scaled, everything else is
-    /// clamped into 0...100.
-    static func percent(in object: [String: Any]) -> Double? {
+    /// Providers report percentages as either 0...100 (Claude `utilization`,
+    /// OpenCode `usagePercent`) or as a 0...1 fraction. Values in 0...1 are
+    /// treated as fractions and scaled, everything else is clamped into 0...100.
+    ///
+    /// Some providers (Codex) report percent **remaining** rather than used.
+    /// Pass `remaining: true` to invert into the used percentage the UI expects,
+    /// so every vendor counts up 0→100 with matching bar colors.
+    static func percent(in object: [String: Any], remaining: Bool = false) -> Double? {
         guard let raw = double(object, keys: [
             "usagePercent", "usage_percent", "percent", "percentUsed",
             "used_percent", "utilization", "usedPercent",
         ]) else { return nil }
-        return normalizePercent(raw)
+        let used = normalizePercent(raw)
+        return remaining ? 100 - used : used
     }
 
     static func normalizePercent(_ raw: Double) -> Double {
@@ -120,8 +124,8 @@ enum RemoteJSON {
         return "Resets in \(minutes)m"
     }
 
-    static func row(key: String, title: String, iconName: String? = nil, object: [String: Any], now: Date = Date(), idleDetail: String? = nil) -> UsageRow {
-        let percent = percent(in: object) ?? 0
+    static func row(key: String, title: String, iconName: String? = nil, object: [String: Any], now: Date = Date(), idleDetail: String? = nil, remaining: Bool = false) -> UsageRow {
+        let percent = percent(in: object, remaining: remaining) ?? 0
         let resetSub = resetSubtitle(in: object, now: now)
         return UsageRow(
             key: key,

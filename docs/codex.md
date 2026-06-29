@@ -24,14 +24,16 @@ stores on the Mac. There is one official path plus a local cost fallback.
 - Response shape (per `ai-usagebar` reference):
   - `rate_limit.primary_window` → session/5-hour lane.
   - `rate_limit.secondary_window` → weekly lane.
-  - Window fields: `used_percent` (0–100), `reset_after_seconds`, `reset_at`
+  - Window fields: a percent value (0–100), `reset_after_seconds`, `reset_at`
     (epoch seconds).
 - Mapping:
   - `primary_window` → "Session" row (drives the menu bar percent).
   - `secondary_window` → "Weekly" row.
   - `plan_type` → plan label.
-- The dashboard shows percent **remaining**; TokenMyBar shows percent **used**
-  (`used_percent`), so 33% remaining renders as 67%.
+- The endpoint reports percent **remaining** (starts at 100%, counts down).
+  `CodexOAuthUsageProvider` inverts it to percent **used** via
+  `RemoteJSON.percent(in:remaining: true)`, so Codex counts up 0→100 and colors
+  its bar like the other vendors — 33% remaining renders as 67% used.
 
 ## Local cost fallback
 
