@@ -27,7 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var refreshTimer: Timer?
     private var snapshots: [ProviderSnapshot] = []
     private var isRefreshing = false
-    private var popoverContentSize = NSSize(width: 480, height: 560)
+    private let popoverWidth: CGFloat = 480
 
     // MARK: Lifecycle
 
@@ -45,7 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem = item
 
         popover.behavior = .transient
-        popover.contentSize = popoverContentSize
+        popover.contentSize = NSSize(width: popoverWidth, height: 560)
 
         render()
         scheduleRefreshTimer()
@@ -93,34 +93,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if popover.isShown {
             popover.performClose(nil)
         } else {
-            popoverContentSize = preferredPopoverSize(for: button)
-            popover.contentSize = popoverContentSize
             render()
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
         }
-    }
-
-    private func preferredPopoverSize(for button: NSStatusBarButton) -> NSSize {
-        let screen = button.window?.screen ?? NSScreen.main
-        let visibleHeight = screen?.visibleFrame.height ?? 900
-        let height = min(estimatedPopoverHeight(), visibleHeight - 48)
-        return NSSize(width: 480, height: max(180, height))
-    }
-
-    private func estimatedPopoverHeight() -> CGFloat {
-        let active = snapshots.filter { $0.status == .ok || $0.status == .stale }
-        guard !active.isEmpty else { return 180 }
-
-        let headerHeight: CGFloat = 68
-        let bottomPadding: CGFloat = 10
-        let dividers = CGFloat(active.count)
-        let vendorHeights = active.reduce(CGFloat(0)) { total, snapshot in
-            let rowCount = max(snapshot.usageRows.count, 1)
-            let rowSpacing = CGFloat(max(0, rowCount - 1)) * 14
-            return total + 28 + 16 + 14 + CGFloat(rowCount) * 32 + rowSpacing
-        }
-        return headerHeight + dividers + bottomPadding + vendorHeights
     }
 
     private func showContextMenu() {
@@ -248,10 +224,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let button = statusItem?.button {
             button.image = nil
             button.attributedTitle = statusTitle()
-            if popover.isShown {
-                popoverContentSize = preferredPopoverSize(for: button)
-                popover.contentSize = popoverContentSize
-            }
         }
 
         let actions = PopoverActions(
@@ -261,15 +233,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             onAbout: { [weak self] in self?.openAbout() },
             onQuit: { [weak self] in self?.quit() }
         )
-        let rootView = PopoverView(
-            snapshots: snapshots,
-            actions: actions,
-            contentHeight: popoverContentSize.height
-        )
+        let rootView = PopoverView(snapshots: snapshots, actions: actions)
         if let hostingController = popover.contentViewController as? NSHostingController<PopoverView> {
             hostingController.rootView = rootView
         } else {
-            popover.contentViewController = NSHostingController(rootView: rootView)
+            // Let SwiftUI drive the popover height; we only pin the width in PopoverView.
+            let hostingController = NSHostingController(rootView: rootView)
+            hostingController.sizingOptions = .preferredContentSize
+            popover.contentViewController = hostingController
         }
     }
 

@@ -10,13 +10,17 @@ struct PopoverActions {
     var onQuit: () -> Void
 }
 
+/// Native macOS menu-bar popover, modeled on Control Center / Wi-Fi / Sound menus.
+/// Layout is driven entirely by spacing — no cards, no shadows beyond the system material.
 struct PopoverView: View {
     let snapshots: [ProviderSnapshot]
     let actions: PopoverActions
-    let contentHeight: CGFloat
 
-    private let popoverWidth: CGFloat = 480
-    private let cornerRadius: CGFloat = 22
+    private enum Metrics {
+        static let popoverWidth: CGFloat = 480
+        static let cornerRadius: CGFloat = 24
+        static let contentHorizontal: CGFloat = 20
+    }
 
     private var activeSnapshots: [ProviderSnapshot] {
         snapshots.filter { $0.status == .ok || $0.status == .stale }
@@ -31,100 +35,92 @@ struct PopoverView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header
+            HeaderView(
+                updatedText: updatedText,
+                isRefreshing: actions.isRefreshing,
+                onRefresh: actions.onRefresh,
+                onSettings: actions.onSettings
+            )
+            .padding(.horizontal, Metrics.contentHorizontal)
+
             Divider()
-                .overlay(Color(nsColor: .separatorColor).opacity(1.0))
+
             content
         }
-        .frame(width: popoverWidth, height: contentHeight)
-        .background(
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(.regularMaterial)
-        )
+        .frame(width: Metrics.popoverWidth)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: Metrics.cornerRadius, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            RoundedRectangle(cornerRadius: Metrics.cornerRadius, style: .continuous)
                 .stroke(Color(nsColor: .separatorColor).opacity(0.22), lineWidth: 1)
         )
-        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
     }
 
-    private var header: some View {
-        HStack(alignment: .center, spacing: 14) {
-            Image(systemName: "chart.bar.xaxis")
-                .font(.system(size: 18, weight: .semibold))
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(.red)
-                .frame(width: 40, height: 40)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color.red.opacity(0.12))
-                )
+    @ViewBuilder
+    private var content: some View {
+        if activeSnapshots.isEmpty {
+            EmptyStateView()
+        } else {
+            VStack(spacing: 0) {
+                ForEach(Array(activeSnapshots.enumerated()), id: \.element.id) { index, snapshot in
+                    if index > 0 { Divider() }
+                    VendorSection(snapshot: snapshot)
+                }
+            }
+        }
+    }
+}
 
-            VStack(alignment: .leading, spacing: 2) {
+// MARK: - Header
+
+private struct HeaderView: View {
+    let updatedText: String
+    let isRefreshing: Bool
+    let onRefresh: () -> Void
+    let onSettings: () -> Void
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 16) {
+            // App logo — original red, never monochrome.
+            Image(systemName: "chart.bar.xaxis")
+                .font(.system(size: 38, weight: .bold))
+                .symbolRenderingMode(.monochrome)
+                .foregroundStyle(.red)
+                .frame(width: 52, height: 52)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 3) {
                 Text("TokenMyBar")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(.primary)
-                Text("Updated \(updatedText)")
-                    .font(.system(size: 11, weight: .regular))
+
+                Label("Updated \(updatedText)", systemImage: "clock")
+                    .labelStyle(.titleAndIcon)
+                    .font(.system(size: 14))
                     .foregroundStyle(.secondary)
             }
 
-            Spacer()
+            Spacer(minLength: 12)
 
-            HStack(spacing: 0) {
+            HStack(spacing: 8) {
                 HeaderButton(
                     systemName: "arrow.clockwise",
-                    isLoading: actions.isRefreshing,
-                    accessibilityLabel: actions.isRefreshing ? "Refreshing" : "Refresh",
-                    action: actions.onRefresh
+                    isLoading: isRefreshing,
+                    accessibilityLabel: isRefreshing ? "Refreshing" : "Refresh",
+                    action: onRefresh
                 )
                 .keyboardShortcut("r", modifiers: .command)
 
                 HeaderButton(
                     systemName: "gearshape",
                     accessibilityLabel: "Settings",
-                    action: actions.onSettings
+                    action: onSettings
                 )
                 .keyboardShortcut(",", modifiers: .command)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 14)
-        .padding(.bottom, 10)
-        .frame(height: 68)
-    }
-
-    @ViewBuilder
-    private var content: some View {
-        if activeSnapshots.isEmpty {
-            VStack(spacing: 10) {
-                Image(systemName: "tray")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                Text("No active vendors")
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-                Text("Enable a vendor in Settings or refresh usage.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 14)
-            .padding(.bottom, 14)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            VStack(spacing: 0) {
-                ForEach(activeSnapshots, id: \.id) { snapshot in
-                    VendorSection(snapshot: snapshot)
-                    if snapshot.id != activeSnapshots.last?.id {
-                        Divider()
-                            .overlay(Color(nsColor: .separatorColor).opacity(1.0))
-                    }
-                }
-            }
-            .padding(.bottom, 10)
-        }
+        .padding(.top, 20)
+        .padding(.bottom, 16)
     }
 }
 
@@ -138,28 +134,33 @@ private struct HeaderButton: View {
     var body: some View {
         Button(action: action) {
             ZStack {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color(nsColor: .controlAccentColor).opacity(isHovered ? 0.10 : 0))
+                Circle()
+                    .fill(Color.primary.opacity(isHovered ? 0.12 : 0))
+                Circle()
+                    .stroke(Color(nsColor: .separatorColor).opacity(0.6), lineWidth: 1)
 
                 if isLoading {
                     ProgressView()
                         .controlSize(.small)
-                        .scaleEffect(0.82)
+                        .scaleEffect(0.85)
                 } else {
                     Image(systemName: systemName)
-                        .font(.system(size: 14, weight: .medium))
-                        .symbolRenderingMode(.hierarchical)
+                        .font(.system(size: 17, weight: .medium))
+                        .symbolRenderingMode(.monochrome)
                         .foregroundStyle(.secondary)
                 }
             }
-            .frame(width: 40, height: 40)
-            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .frame(width: 38, height: 38)
+            .contentShape(Circle())
         }
         .buttonStyle(.plain)
+        .frame(width: 48, height: 48)
         .onHover { isHovered = $0 }
         .accessibilityLabel(accessibilityLabel)
     }
 }
+
+// MARK: - Vendor
 
 private struct VendorSection: View {
     let snapshot: ProviderSnapshot
@@ -173,46 +174,45 @@ private struct VendorSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            headerRow
-                .padding(.bottom, 16)
+            VendorHeader(snapshot: snapshot)
+                .padding(.bottom, 26)
 
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 22) {
                 ForEach(rows, id: \.id) { row in
                     UsageRowView(row: row, isStale: isStale)
                 }
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 22)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(snapshot.displayName)
     }
+}
 
-    private var headerRow: some View {
+private struct VendorHeader: View {
+    let snapshot: ProviderSnapshot
+
+    var body: some View {
         HStack(alignment: .center, spacing: 16) {
             Image(systemName: iconName)
-                .font(.system(size: 15, weight: .semibold))
-                .symbolRenderingMode(.hierarchical)
+                .font(.system(size: 20, weight: .semibold))
+                .symbolRenderingMode(.monochrome)
                 .foregroundStyle(.primary)
-                .frame(width: 24, height: 24)
+                .frame(width: 28, height: 28)
 
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(snapshot.displayName)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
+            Text(snapshot.displayName)
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
 
-                if let plan = snapshot.planName {
-                    Text(plan)
-                        .font(.caption2.weight(.semibold))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Capsule().fill(Color(nsColor: .controlBackgroundColor).opacity(0.55)))
-                        .foregroundStyle(.secondary)
-                }
+            if let plan = snapshot.planName, !plan.isEmpty {
+                PlanBadge(text: plan)
             }
 
-            Spacer()
+            Spacer(minLength: 12)
+
+            StatusBadge(status: snapshot.status)
         }
     }
 
@@ -225,19 +225,58 @@ private struct VendorSection: View {
     }
 }
 
+/// Premium-tier capsule (e.g. "Plus"), shown only when the vendor reports a plan.
+private struct PlanBadge: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Capsule().fill(Color.secondary.opacity(0.18)))
+            .accessibilityLabel("Plan \(text)")
+    }
+}
+
+/// Trailing status capsule. Green "OK" for healthy vendors; yellow for stale data.
+private struct StatusBadge: View {
+    let status: ProviderStatus
+
+    private var tint: Color {
+        status == .ok ? .green : .yellow
+    }
+
+    private var iconName: String {
+        status == .ok ? "checkmark.circle" : "clock"
+    }
+
+    private var label: String {
+        status == .ok ? "OK" : "Stale"
+    }
+
+    var body: some View {
+        Label(label, systemImage: iconName)
+            .labelStyle(.titleAndIcon)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Capsule().fill(tint.opacity(0.14)))
+            .overlay(Capsule().stroke(tint.opacity(0.75), lineWidth: 1))
+            .accessibilityLabel(label)
+    }
+}
+
+// MARK: - Usage row
+
 private struct UsageRowView: View {
     let row: UsageRow
     let isStale: Bool
 
     private var clampedPercent: Double? {
         row.percent.map { min(max($0, 0), 100) }
-    }
-
-    private var barColor: Color {
-        guard let percent = clampedPercent else { return Color(nsColor: .systemGray) }
-        if percent >= 100 { return Color(nsColor: .systemRed) }
-        if percent >= 70 { return Color(nsColor: .systemYellow) }
-        return Color(nsColor: .systemGray)
     }
 
     private var resetText: String {
@@ -249,36 +288,35 @@ private struct UsageRowView: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 0) {
+        HStack(spacing: 0) {
             Image(systemName: metricIconName)
-                .font(.system(size: 14, weight: .regular))
-                .symbolRenderingMode(.hierarchical)
+                .font(.system(size: 18, weight: .regular))
+                .symbolRenderingMode(.monochrome)
                 .foregroundStyle(.secondary)
-                .frame(width: 24, height: 24)
-                .padding(.trailing, 12)
+                .frame(width: 28, height: 28)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(metricTitle)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 17, weight: .medium))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                 Text(resetText)
-                    .font(.system(size: 11, weight: .regular))
+                    .font(.system(size: 14))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
-            .frame(width: 100, alignment: .leading)
+            .padding(.leading, 16)
 
-            Spacer(minLength: 8)
+            Spacer(minLength: 12)
 
-            UsageMeter(percent: clampedPercent ?? 0, color: isStale ? Color(nsColor: .systemGray) : barColor)
-                .frame(width: 220, height: 8)
+            ProgressBar(percent: clampedPercent ?? 0, isStale: isStale)
+                .frame(width: 220, height: 10)
 
             Text(percentText)
-                .font(.system(size: 13, weight: .regular).monospacedDigit())
+                .font(.system(size: 17).monospacedDigit())
                 .foregroundStyle(.secondary)
-                .frame(width: 40, alignment: .trailing)
-                .padding(.leading, 12)
+                .frame(width: 48, alignment: .trailing)
+                .padding(.leading, 18)
                 .lineLimit(1)
         }
         .accessibilityElement(children: .combine)
@@ -286,7 +324,6 @@ private struct UsageRowView: View {
 
     private var metricTitle: String {
         switch row.key {
-        case "session": "Rolling Usage"
         case "weekly": "Weekly Usage"
         case "monthly", "billing": "Monthly Usage"
         default: row.title
@@ -302,24 +339,58 @@ private struct UsageRowView: View {
     }
 }
 
-private struct UsageMeter: View {
+// MARK: - Progress bar
+
+/// Only the fill changes color — percentage text always stays monochrome.
+/// Gray 0–69%, Yellow 70–99%, Red 100%.
+private struct ProgressBar: View {
     let percent: Double
-    let color: Color
+    let isStale: Bool
+
+    private var fillColor: Color {
+        if isStale { return Color(nsColor: .systemGray) }
+        if percent >= 100 { return Color(nsColor: .systemRed) }
+        if percent >= 70 { return Color(nsColor: .systemYellow) }
+        return Color(nsColor: .systemGray)
+    }
 
     var body: some View {
         GeometryReader { proxy in
-            let width = max(percent > 0 ? 8 : 0, proxy.size.width * min(max(percent, 0), 100) / 100)
+            let fraction = min(max(percent, 0), 100) / 100
+            let width = percent > 0 ? max(proxy.size.height, proxy.size.width * fraction) : 0
             ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                Capsule()
                     .fill(Color(nsColor: .systemGray).opacity(0.30))
-                RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .fill(color)
+                Capsule()
+                    .fill(fillColor)
                     .frame(width: width)
             }
-            .accessibilityElement()
-            .accessibilityLabel("Progress")
-            .accessibilityValue("\(Int(percent))%")
         }
+        .accessibilityElement()
+        .accessibilityLabel("Usage")
+        .accessibilityValue("\(Int(percent))%")
+    }
+}
+
+// MARK: - Empty state
+
+private struct EmptyStateView: View {
+    var body: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "tray")
+                .font(.system(size: 24, weight: .semibold))
+                .foregroundStyle(.secondary)
+            Text("No active vendors")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(.primary)
+            Text("Enable a vendor in Settings or refresh usage.")
+                .font(.system(size: 14))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 40)
     }
 }
 
