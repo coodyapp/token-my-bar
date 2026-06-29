@@ -27,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var refreshTimer: Timer?
     private var snapshots: [ProviderSnapshot] = []
     private var isRefreshing = false
+    private var popoverContentSize = NSSize(width: 560, height: 680)
 
     // MARK: Lifecycle
 
@@ -34,6 +35,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.autosaveName = "TokenMyBarStatusItem"
         if let button = item.button {
+            button.image = NSImage(systemSymbolName: "chart.bar.xaxis", accessibilityDescription: "Token usage")
+            button.imagePosition = .imageLeading
             button.title = "--"
             button.target = self
             button.action = #selector(statusItemClicked)
@@ -44,8 +47,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem = item
 
         popover.behavior = .transient
-        popover.animates = true
-        popover.contentSize = NSSize(width: 450, height: 580)
+        popover.animates = false
+        popover.contentSize = popoverContentSize
 
         render()
         scheduleRefreshTimer()
@@ -79,9 +82,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if popover.isShown {
             popover.performClose(nil)
         } else {
+            popoverContentSize = preferredPopoverSize(for: button)
+            popover.contentSize = popoverContentSize
+            render()
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
         }
+    }
+
+    private func preferredPopoverSize(for button: NSStatusBarButton) -> NSSize {
+        let screen = button.window?.screen ?? NSScreen.main
+        let visibleHeight = screen?.visibleFrame.height ?? 900
+        let height = max(420, min(680, visibleHeight - 96))
+        return NSSize(width: 560, height: height)
     }
 
     private func showContextMenu() {
@@ -204,7 +217,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func render() {
         let combined = CombinedStatusFormatter.format(snapshots, primary: config.primaryVendor)
-        statusItem?.button?.title = combined.title
+        if let button = statusItem?.button {
+            button.image = NSImage(systemSymbolName: "chart.bar.xaxis", accessibilityDescription: "Token usage")
+            button.imagePosition = .imageLeading
+            button.title = " \(combined.title)"
+        }
 
         let actions = PopoverActions(
             isRefreshing: isRefreshing,
@@ -214,7 +231,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             onQuit: { [weak self] in self?.quit() }
         )
         popover.contentViewController = NSHostingController(
-            rootView: PopoverView(snapshots: snapshots, actions: actions)
+            rootView: PopoverView(
+                snapshots: snapshots,
+                actions: actions,
+                contentHeight: popoverContentSize.height - 20
+            )
         )
     }
 }

@@ -30,7 +30,7 @@ public struct OpenCodeCookieUsageProvider: ProviderClient {
 
         var rows = [UsageRow]()
         if let rolling {
-            rows.append(RemoteJSON.row(key: "rolling", title: "Rolling Usage", iconName: "hourglass", object: rolling))
+            rows.append(RemoteJSON.row(key: "rolling", title: "Rolling Usage", iconName: "timer", object: rolling))
         }
         if let weekly {
             rows.append(RemoteJSON.row(key: "weekly", title: "Weekly Usage", iconName: "calendar", object: weekly))

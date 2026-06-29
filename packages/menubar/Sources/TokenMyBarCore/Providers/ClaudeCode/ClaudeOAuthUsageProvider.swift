@@ -28,7 +28,7 @@ public struct ClaudeOAuthUsageProvider: ProviderClient {
         let extra = RemoteJSON.findObject(in: object, keys: ["extra_usage", "extraUsage"])
         let percent = RemoteJSON.percent(in: session ?? weekly ?? object)
         var rows = [UsageRow]()
-        if let session { rows.append(RemoteJSON.row(key: "session", title: "Session", iconName: "hourglass", object: session)) }
+        if let session { rows.append(RemoteJSON.row(key: "session", title: "Session", iconName: "timer", object: session)) }
         if let weekly { rows.append(RemoteJSON.row(key: "weekly", title: "Weekly", iconName: "calendar", object: weekly)) }
         if let sonnet { rows.append(RemoteJSON.row(key: "sonnet", title: "Sonnet only", iconName: "arrow.triangle.2.circlepath", object: sonnet)) }
         if let opus { rows.append(RemoteJSON.row(key: "opus", title: "Opus", iconName: "sparkle", object: opus)) }

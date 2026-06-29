@@ -27,7 +27,7 @@ public struct CodexOAuthUsageProvider: ProviderClient {
         let weekly = RemoteJSON.findObject(in: rateLimit ?? object, keys: ["secondary_window", "secondaryWindow", "weekly", "seven_day", "sevenDay"])
         let percent = RemoteJSON.percent(in: primary ?? object)
         var rows = [UsageRow]()
-        if let primary { rows.append(RemoteJSON.row(key: "session", title: "Session", iconName: "hourglass", object: primary)) }
+        if let primary { rows.append(RemoteJSON.row(key: "session", title: "Session", iconName: "timer", object: primary)) }
         if let weekly { rows.append(RemoteJSON.row(key: "weekly", title: "Weekly", iconName: "calendar", object: weekly)) }
 
         return ProviderSnapshot(
