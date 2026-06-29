@@ -31,18 +31,19 @@ struct PopoverView: View {
         VStack(spacing: 0) {
             header
             Divider()
+                .overlay(Color(nsColor: .separatorColor).opacity(0.78))
             content
         }
-        .frame(width: 520, height: contentHeight)
+        .frame(width: 372, height: contentHeight)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(.regularMaterial)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(Color(nsColor: .separatorColor).opacity(0.45), lineWidth: 1)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .scaleEffect(didAppear ? 1 : 0.985, anchor: .topTrailing)
         .offset(x: didAppear ? 0 : 12)
         .opacity(didAppear ? 1 : 0)
@@ -52,77 +53,63 @@ struct PopoverView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 18) {
+        HStack(alignment: .center, spacing: 12) {
             Image(systemName: "chart.bar.xaxis")
-                .font(.system(size: 38, weight: .bold))
+                .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(.red.gradient)
-                .frame(width: 48)
+                .frame(width: 24, height: 28)
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text("TokenMyBar")
-                    .font(.system(size: 20, weight: .bold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.primary)
                 Label("Updated \(updatedText)", systemImage: "clock")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
                     .labelStyle(.titleAndIcon)
             }
             Spacer()
-            Button(action: actions.onRefresh) {
-                ZStack {
-                    if actions.isRefreshing {
-                        ProgressView()
-                            .controlSize(.small)
-                            .scaleEffect(0.62)
-                    } else {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 22, weight: .medium))
-                    }
-                }
-                .frame(width: 44, height: 44)
-                .background(Circle().fill(Color(nsColor: .controlBackgroundColor).opacity(0.58)))
-                .overlay(Circle().stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 1))
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.primary)
-            .disabled(actions.isRefreshing)
-            .keyboardShortcut("r", modifiers: .command)
-            .accessibilityLabel(actions.isRefreshing ? "Refreshing" : "Refresh")
 
-            Menu {
-                Button("Settings…", action: actions.onSettings)
-                Button("About TokenMyBar", action: actions.onAbout)
-                Divider()
-                Button("Quit TokenMyBar", action: actions.onQuit)
-            } label: {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(.primary)
-                    .frame(width: 44, height: 44)
-                    .background(Circle().fill(Color(nsColor: .controlBackgroundColor).opacity(0.58)))
-                    .overlay(Circle().stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 1))
+            HStack(spacing: 8) {
+                Button(action: actions.onRefresh) {
+                    HeaderIcon(systemName: "arrow.clockwise", isLoading: actions.isRefreshing)
+                }
+                .buttonStyle(.plain)
+                .disabled(actions.isRefreshing)
+                .keyboardShortcut("r", modifiers: .command)
+                .accessibilityLabel(actions.isRefreshing ? "Refreshing" : "Refresh")
+
+                Menu {
+                    Button("Settings…", action: actions.onSettings)
+                    Button("About TokenMyBar", action: actions.onAbout)
+                    Divider()
+                    Button("Quit TokenMyBar", action: actions.onQuit)
+                } label: {
+                    HeaderIcon(systemName: "gearshape")
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .accessibilityLabel("More actions")
             }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .accessibilityLabel("More actions")
         }
-        .padding(.horizontal, 22)
-        .padding(.vertical, 22)
+        .padding(.horizontal, 16)
+        .padding(.top, 14)
+        .padding(.bottom, 12)
     }
 
     @ViewBuilder
     private var content: some View {
         if activeSnapshots.isEmpty {
-            VStack(spacing: 8) {
+            VStack(spacing: 6) {
                 Image(systemName: "tray")
-                    .font(.system(size: 28, weight: .semibold))
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(.secondary)
                 Text("No active vendors")
-                    .font(.system(size: 16, weight: .bold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.primary)
                 Text("Enable a vendor in Settings or refresh usage.")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -132,16 +119,42 @@ struct PopoverView: View {
                     VendorSection(snapshot: snapshot)
                     if index < activeSnapshots.count - 1 {
                         Divider()
-                            .overlay(Color(nsColor: .separatorColor).opacity(0.55))
-                            .padding(.vertical, 12)
+                            .overlay(Color(nsColor: .separatorColor).opacity(0.82))
+                            .padding(.vertical, 10)
                     }
                 }
             }
-            .padding(.horizontal, 22)
-            .padding(.vertical, 20)
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 16)
         }
     }
 
+}
+
+private struct HeaderIcon: View {
+    let systemName: String
+    var isLoading = false
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(Color(nsColor: .controlBackgroundColor).opacity(0.62))
+                .overlay(Circle().stroke(Color(nsColor: .separatorColor).opacity(0.48), lineWidth: 1))
+            if isLoading {
+                ProgressView()
+                    .controlSize(.small)
+                    .scaleEffect(0.58)
+            } else {
+                Image(systemName: systemName)
+                    .font(.system(size: 13, weight: .medium))
+                    .symbolRenderingMode(.hierarchical)
+            }
+        }
+        .foregroundStyle(.primary)
+        .frame(width: 28, height: 28)
+        .contentShape(Circle())
+    }
 }
 
 private struct VendorSection: View {
@@ -155,31 +168,32 @@ private struct VendorSection: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        VStack(alignment: .leading, spacing: 10) {
             headerRow
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 9) {
                 ForEach(rows, id: \.id) { row in
                     UsageRowView(row: row, isStale: isStale)
                 }
             }
         }
+        .padding(.vertical, 2)
     }
 
     private var headerRow: some View {
-        HStack(alignment: .center, spacing: 16) {
+        HStack(alignment: .center, spacing: 10) {
             Image(systemName: iconName)
-                .font(.system(size: 25, weight: .semibold))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(.primary)
-                .frame(width: 40)
-            HStack(alignment: .center, spacing: 8) {
+                .frame(width: 22)
+            HStack(alignment: .center, spacing: 6) {
                 Text(snapshot.displayName)
-                    .font(.system(size: 17, weight: .bold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.primary)
                 if let plan = snapshot.planName {
                     Text(plan)
-                        .font(.system(size: 12, weight: .semibold))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
+                        .font(.system(size: 10, weight: .semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
                         .background(Capsule().fill(Color(nsColor: .controlBackgroundColor).opacity(0.62)))
                         .foregroundStyle(.secondary)
                 }
@@ -187,7 +201,7 @@ private struct VendorSection: View {
             Spacer()
             if let authSummary = snapshot.authSummary {
                 Text(authSummary)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
@@ -228,34 +242,35 @@ private struct UsageRowView: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 16) {
+        HStack(alignment: .center, spacing: 10) {
             ZStack {
                 Circle()
                     .fill(Color(nsColor: .controlBackgroundColor).opacity(0.68))
-                    .frame(width: 32, height: 32)
+                    .frame(width: 22, height: 22)
                 Image(systemName: row.iconName ?? "chart.bar")
-                    .font(.system(size: 16, weight: .medium))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.primary)
             }
+            .frame(width: 22)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(row.title)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.primary)
                 Text(usedText)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
-            .frame(width: 130, alignment: .leading)
+            .frame(width: 92, alignment: .leading)
 
             UsageMeter(percent: clampedPercent ?? 0, color: isStale ? .secondary : barColor)
-                .frame(height: 8)
+                .frame(height: 5)
 
             Text(row.percent.map { "\(Int($0.rounded()))%" } ?? row.value)
-                .font(.system(size: 15, weight: .medium).monospacedDigit())
+                .font(.system(size: 12, weight: .medium).monospacedDigit())
                 .foregroundStyle(.secondary)
-                .frame(width: 44, alignment: .trailing)
+                .frame(width: 34, alignment: .trailing)
         }
     }
 }

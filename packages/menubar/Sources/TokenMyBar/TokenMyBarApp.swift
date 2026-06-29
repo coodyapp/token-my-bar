@@ -27,7 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var refreshTimer: Timer?
     private var snapshots: [ProviderSnapshot] = []
     private var isRefreshing = false
-    private var popoverContentSize = NSSize(width: 520, height: 520)
+    private var popoverContentSize = NSSize(width: 372, height: 360)
 
     // MARK: Lifecycle
 
@@ -92,21 +92,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let screen = button.window?.screen ?? NSScreen.main
         let visibleHeight = screen?.visibleFrame.height ?? 900
         let height = min(estimatedPopoverHeight(), visibleHeight - 48)
-        return NSSize(width: 520, height: max(180, height))
+        return NSSize(width: 372, height: max(150, height))
     }
 
     private func estimatedPopoverHeight() -> CGFloat {
         let active = snapshots.filter { $0.status == .ok || $0.status == .stale }
         guard !active.isEmpty else { return 130 }
 
-        let headerHeight: CGFloat = 89
-        let contentPadding: CGFloat = 40
+        let headerHeight: CGFloat = 55
+        let contentPadding: CGFloat = 28
         let dividerHeight: CGFloat = CGFloat(max(0, active.count - 1))
         let vendorHeights = active.reduce(CGFloat(0)) { total, snapshot in
             let rowCount = max(snapshot.usageRows.count, 1)
-            return total + 30 + CGFloat(rowCount) * 48
+            return total + 24 + CGFloat(rowCount) * 31
         }
-        return headerHeight + 1 + contentPadding + dividerHeight + CGFloat(max(0, active.count - 1)) * 24 + vendorHeights
+        return headerHeight + 1 + contentPadding + dividerHeight + CGFloat(max(0, active.count - 1)) * 20 + vendorHeights
     }
 
     private func showContextMenu() {
