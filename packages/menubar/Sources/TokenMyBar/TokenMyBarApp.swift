@@ -27,7 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var refreshTimer: Timer?
     private var snapshots: [ProviderSnapshot] = []
     private var isRefreshing = false
-    private var popoverContentSize = NSSize(width: 560, height: 680)
+    private var popoverContentSize = NSSize(width: 340, height: 420)
 
     // MARK: Lifecycle
 
@@ -35,8 +35,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.autosaveName = "TokenMyBarStatusItem"
         if let button = item.button {
-            button.image = NSImage(systemSymbolName: "chart.bar.xaxis", accessibilityDescription: "Token usage")
-            button.imagePosition = .imageLeading
             button.title = "--"
             button.target = self
             button.action = #selector(statusItemClicked)
@@ -93,8 +91,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func preferredPopoverSize(for button: NSStatusBarButton) -> NSSize {
         let screen = button.window?.screen ?? NSScreen.main
         let visibleHeight = screen?.visibleFrame.height ?? 900
-        let height = max(420, min(680, visibleHeight - 96))
-        return NSSize(width: 560, height: height)
+        let height = max(320, min(420, visibleHeight - 96))
+        return NSSize(width: 340, height: height)
     }
 
     private func showContextMenu() {
@@ -216,11 +214,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func render() {
-        let combined = CombinedStatusFormatter.format(snapshots, primary: config.primaryVendor)
         if let button = statusItem?.button {
-            button.image = NSImage(systemSymbolName: "chart.bar.xaxis", accessibilityDescription: "Token usage")
-            button.imagePosition = .imageLeading
-            button.title = " \(combined.title)"
+            button.image = nil
+            button.attributedTitle = statusTitle()
         }
 
         let actions = PopoverActions(
@@ -237,6 +233,64 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 contentHeight: popoverContentSize.height - 20
             )
         )
+    }
+
+    private func statusTitle() -> NSAttributedString {
+        let segments = statusSegments()
+        if segments.isEmpty {
+            return statusSegment(iconName: "chart.bar.xaxis", title: "--")
+        }
+
+        let title = NSMutableAttributedString()
+        for (index, segment) in segments.enumerated() {
+            if index > 0 {
+                title.append(NSAttributedString(string: "  "))
+            }
+            title.append(statusSegment(iconName: iconName(for: segment.providerID), title: segment.title))
+        }
+        return title
+    }
+
+    private func statusSegments() -> [(providerID: ProviderID, title: String)] {
+        let usable = snapshots.filter { $0.status == .ok || $0.status == .stale }
+        let ordered: [ProviderSnapshot]
+        if let primary = config.primaryVendor, let primarySnapshot = usable.first(where: { $0.providerID == primary }) {
+            ordered = [primarySnapshot] + usable.filter { $0.providerID != primary }
+        } else {
+            ordered = usable
+        }
+
+        return ordered.compactMap { snapshot in
+            guard let percent = snapshot.usagePercent else { return nil }
+            return (snapshot.providerID, "\(Int(percent.rounded()))%")
+        }
+    }
+
+    private func statusSegment(iconName: String, title: String) -> NSAttributedString {
+        let result = NSMutableAttributedString()
+        if let image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil) {
+            let attachment = NSTextAttachment()
+            attachment.image = image
+            attachment.bounds = NSRect(x: 0, y: -2, width: 14, height: 14)
+            result.append(NSAttributedString(attachment: attachment))
+            result.append(NSAttributedString(string: " "))
+        }
+        result.append(NSAttributedString(
+            string: title,
+            attributes: [
+                .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .semibold),
+                .foregroundColor: NSColor.labelColor,
+            ]
+        ))
+        return result
+    }
+
+    private func iconName(for providerID: ProviderID) -> String {
+        switch providerID {
+        case .codex: "terminal"
+        case .claudeCode: "sparkles"
+        case .opencode: "chevron.left.forwardslash.chevron.right"
+        }
     }
 }
 #else

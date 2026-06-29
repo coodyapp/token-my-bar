@@ -30,9 +30,10 @@ struct PopoverView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
+            Divider()
             content
         }
-        .frame(width: 540, height: contentHeight)
+        .frame(width: 320, height: contentHeight)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .fill(.regularMaterial)
@@ -43,7 +44,7 @@ struct PopoverView: View {
         )
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .padding(10)
-        .shadow(color: .black.opacity(0.20), radius: 24, y: 12)
+        .shadow(color: .black.opacity(0.22), radius: 18, y: 8)
         .scaleEffect(didAppear ? 1 : 0.985, anchor: .topTrailing)
         .offset(x: didAppear ? 0 : 28)
         .opacity(didAppear ? 1 : 0)
@@ -53,22 +54,13 @@ struct PopoverView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.accentColor.opacity(0.16))
-                Image(systemName: "chart.bar.xaxis")
-                    .font(.system(size: 26, weight: .bold))
-                    .foregroundStyle(Color.accentColor)
-            }
-            .frame(width: 44, height: 44)
-
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(alignment: .center, spacing: 10) {
+            VStack(alignment: .leading, spacing: 5) {
                 Text("TokenMyBar")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(.primary)
                 Label("Updated \(updatedText)", systemImage: "clock")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.secondary)
                     .labelStyle(.titleAndIcon)
             }
@@ -81,15 +73,13 @@ struct PopoverView: View {
                             .scaleEffect(0.62)
                     } else {
                         Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 18, weight: .semibold))
+                            .font(.system(size: 15, weight: .semibold))
                     }
                 }
-                .frame(width: 42, height: 42)
+                .frame(width: 28, height: 28)
             }
             .buttonStyle(.borderless)
             .foregroundStyle(.primary)
-            .background(.quaternary.opacity(0.70), in: Circle())
-            .overlay(Circle().stroke(Color(nsColor: .separatorColor).opacity(0.35), lineWidth: 1))
             .disabled(actions.isRefreshing)
             .keyboardShortcut("r", modifiers: .command)
             .accessibilityLabel(actions.isRefreshing ? "Refreshing" : "Refresh")
@@ -101,7 +91,7 @@ struct PopoverView: View {
                 Button("Quit TokenMyBar", action: actions.onQuit)
             } label: {
                 Image(systemName: "ellipsis.circle")
-                    .font(.system(size: 26, weight: .regular))
+                    .font(.system(size: 18, weight: .regular))
                     .foregroundStyle(.primary)
             }
             .menuStyle(.borderlessButton)
@@ -109,9 +99,9 @@ struct PopoverView: View {
             .fixedSize()
             .accessibilityLabel("More actions")
         }
-        .padding(.horizontal, 30)
-        .padding(.top, 26)
-        .padding(.bottom, 24)
+        .padding(.horizontal, 14)
+        .padding(.top, 12)
+        .padding(.bottom, 10)
     }
 
     @ViewBuilder
@@ -132,7 +122,7 @@ struct PopoverView: View {
         } else {
             ScrollViewReader { proxy in
                 ScrollView(showsIndicators: false) {
-                    LazyVStack(spacing: 30) {
+                    LazyVStack(spacing: 18) {
                         Color.clear
                             .frame(height: 0)
                             .id("top")
@@ -140,8 +130,8 @@ struct PopoverView: View {
                             VendorSection(snapshot: snapshot)
                         }
                     }
-                    .padding(.horizontal, 30)
-                    .padding(.bottom, 26)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
                 }
                 .onAppear {
                     DispatchQueue.main.async {
@@ -165,35 +155,32 @@ private struct VendorSection: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .center, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 10) {
                 Image(systemName: iconName)
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(.primary)
-                    .frame(width: 28)
+                    .frame(width: 22)
                 Text(snapshot.displayName)
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(.primary)
                 if let plan = snapshot.planName {
                     Text(plan)
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .background(.quaternary.opacity(0.7), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
                 Text(snapshot.status.label)
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
+                    .font(.system(size: 12, weight: .bold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
                     .background(statusColor.opacity(0.18), in: Capsule())
                     .foregroundStyle(statusColor)
             }
 
             if let authSummary = snapshot.authSummary {
                 Text(authSummary)
-                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.secondary)
             }
 
@@ -203,7 +190,7 @@ private struct VendorSection: View {
                     if index < rows.count - 1 {
                         Divider()
                             .overlay(Color(nsColor: .separatorColor).opacity(0.55))
-                            .padding(.vertical, 18)
+                            .padding(.vertical, 12)
                     }
                 }
             }
@@ -252,36 +239,36 @@ private struct UsageRowView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
                 if let iconName = row.iconName {
                     Image(systemName: iconName)
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(.secondary)
-                        .frame(width: 24)
+                        .frame(width: 20)
                 }
                 Text(row.title)
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(.primary)
                 Spacer()
                 if row.percent == nil {
                     Text(row.value)
-                        .font(.system(size: 16, weight: .semibold, design: .rounded).monospacedDigit())
+                        .font(.system(size: 12, weight: .semibold).monospacedDigit())
                         .foregroundStyle(isStale ? .secondary : .primary)
                 }
             }
 
             UsageMeter(percent: clampedPercent ?? 0, color: isStale ? .secondary : barColor)
-                .frame(height: 8)
+                .frame(height: 5)
 
             HStack(alignment: .firstTextBaseline) {
                 Text(usedText)
-                    .font(.system(size: 15, weight: .semibold, design: .rounded).monospacedDigit())
+                    .font(.system(size: 12, weight: .semibold).monospacedDigit())
                     .foregroundStyle(.secondary)
                 Spacer()
                 if let detail = row.detail {
                     Text(detail)
-                        .font(.system(size: 15, weight: .semibold, design: .rounded).monospacedDigit())
+                        .font(.system(size: 12, weight: .semibold).monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
             }
