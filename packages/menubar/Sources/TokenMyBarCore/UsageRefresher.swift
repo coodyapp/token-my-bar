@@ -46,23 +46,26 @@ public actor UsageRefresher {
 
         // Single-flight across processes: only the lock holder fetches.
         guard await store.tryBeginRefresh() else { return previous }
+        defer { Task { await store.endRefresh() } }
 
-        // Another process may have refreshed just before we won the lock;
-        // re-check freshness before spending API calls.
         if let fresh = await store.loadIfFresh(ttl: ttl, now: now) {
-            await store.endRefresh()
             return fresh
         }
 
-        var results: [ProviderSnapshot] = []
-        for provider in providers {
-            results.append(await snapshot(for: provider))
+        let results = await withTaskGroup(of: ProviderSnapshot.self) { group in
+            for provider in providers {
+                group.addTask { await self.snapshot(for: provider) }
+            }
+            var collected: [ProviderSnapshot] = []
+            for await result in group {
+                collected.append(result)
+            }
+            return collected
         }
 
         let merged = SnapshotMerger.merge(fresh: results, cached: previous)
         let toSave = SnapshotMerger.snapshotsToSave(merged: merged, cached: previous)
         try? await store.save(toSave)
-        await store.endRefresh()
         return merged
     }
 

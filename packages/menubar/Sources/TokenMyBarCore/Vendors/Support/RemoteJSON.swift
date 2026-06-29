@@ -2,7 +2,12 @@ import Foundation
 
 enum RemoteJSON {
     static func request(url: String) -> URLRequest {
-        var request = URLRequest(url: URL(string: url)!, timeoutInterval: 15)
+        guard let url = URL(string: url) else {
+            var req = URLRequest(url: URL(string: "https://localhost")!)
+            req.timeoutInterval = 0.1
+            return req
+        }
+        var request = URLRequest(url: url, timeoutInterval: 15)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         return request
     }
@@ -115,13 +120,14 @@ enum RemoteJSON {
         return "Resets in \(minutes)m"
     }
 
-    static func row(key: String, title: String, iconName: String? = nil, object: [String: Any], now: Date = Date()) -> UsageRow {
+    static func row(key: String, title: String, iconName: String? = nil, object: [String: Any], now: Date = Date(), idleDetail: String? = nil) -> UsageRow {
         let percent = percent(in: object) ?? 0
+        let resetSub = resetSubtitle(in: object, now: now)
         return UsageRow(
             key: key,
             title: title,
             value: "\(Int(percent.rounded()))%",
-            detail: resetSubtitle(in: object, now: now),
+            detail: resetSub ?? idleDetail,
             iconName: iconName,
             percent: percent,
             unit: .tokens

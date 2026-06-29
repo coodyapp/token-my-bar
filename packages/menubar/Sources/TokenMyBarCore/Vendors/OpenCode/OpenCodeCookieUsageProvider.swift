@@ -156,7 +156,10 @@ public struct OpenCodeCookieUsageProvider: ProviderClient {
     }
 
     private static func serverRequest(url: String, cookie: String) -> URLRequest {
-        var request = URLRequest(url: URL(string: url)!, timeoutInterval: 15)
+        guard let url = URL(string: url) else {
+            return URLRequest(url: URL(string: "https://localhost")!)
+        }
+        var request = URLRequest(url: url, timeoutInterval: 15)
         request.setValue(cookie, forHTTPHeaderField: "Cookie")
         request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         request.setValue("https://opencode.ai", forHTTPHeaderField: "Origin")

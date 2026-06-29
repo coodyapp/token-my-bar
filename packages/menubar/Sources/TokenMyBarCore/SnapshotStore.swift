@@ -80,6 +80,7 @@ public actor SnapshotStore {
         let directory = fileURL.deletingLastPathComponent()
         let data = try JSONEncoder.tokenMyBar.encode(snapshots)
         let tempURL = directory.appendingPathComponent(".snapshots.json.tmp")
+        defer { try? FileManager.default.removeItem(at: tempURL) }
         try data.write(to: tempURL, options: [.atomic])
         try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: tempURL.path)
 
@@ -112,6 +113,8 @@ final class FileLock {
         flock(descriptor, LOCK_UN)
         close(descriptor)
     }
+
+    deinit { close(descriptor) }
 }
 
 extension JSONEncoder {

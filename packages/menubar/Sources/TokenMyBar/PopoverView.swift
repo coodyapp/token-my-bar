@@ -46,7 +46,6 @@ struct PopoverView: View {
                 .stroke(Color(nsColor: .separatorColor).opacity(0.22), lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-        .preferredColorScheme(.dark)
     }
 
     private var header: some View {
@@ -115,18 +114,16 @@ struct PopoverView: View {
             .padding(.bottom, 14)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 0) {
-                    ForEach(activeSnapshots, id: \.id) { snapshot in
-                        VendorSection(snapshot: snapshot)
-                        if snapshot.id != activeSnapshots.last?.id {
-                            Divider()
-                                .overlay(Color(nsColor: .separatorColor).opacity(1.0))
-                        }
+            VStack(spacing: 0) {
+                ForEach(activeSnapshots, id: \.id) { snapshot in
+                    VendorSection(snapshot: snapshot)
+                    if snapshot.id != activeSnapshots.last?.id {
+                        Divider()
+                            .overlay(Color(nsColor: .separatorColor).opacity(1.0))
                     }
                 }
-                .padding(.bottom, 10)
             }
+            .padding(.bottom, 10)
         }
     }
 }
@@ -187,6 +184,8 @@ private struct VendorSection: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(snapshot.displayName)
     }
 
     private var headerRow: some View {
@@ -317,6 +316,9 @@ private struct UsageMeter: View {
                     .fill(color)
                     .frame(width: width)
             }
+            .accessibilityElement()
+            .accessibilityLabel("Progress")
+            .accessibilityValue("\(Int(percent))%")
         }
     }
 }

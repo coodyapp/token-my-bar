@@ -45,11 +45,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         statusItem = item
 
         popover.behavior = .transient
-        popover.animates = false
         popover.contentSize = popoverContentSize
 
         render()
         scheduleRefreshTimer()
+
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self, selector: #selector(sleepDidWake),
+            name: NSWorkspace.didWakeNotification, object: nil
+        )
 
         Task {
             snapshots = await refresher.cached()
@@ -60,7 +64,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         refreshTimer?.invalidate()
+        NSWorkspace.shared.notificationCenter.removeObserver(self)
         popover.performClose(nil)
+    }
+
+    @objc private func sleepDidWake() {
+        Task { await refresh(force: true) }
+    }
+
+    func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
+        true
     }
 
     // MARK: Status item interaction
@@ -169,7 +182,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func openSettings() {
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         if settingsWindowController == nil {
             settingsWindowController = SettingsWindowController(
                 settings: settings,
@@ -183,7 +196,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func openAbout() {
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         NSApp.orderFrontStandardAboutPanel(options: aboutPanelOptions())
     }
 
@@ -213,6 +226,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         refreshTimer = Timer.scheduledTimer(withTimeInterval: seconds, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in await self?.refresh() }
         }
+        refreshTimer?.tolerance = seconds * 0.1
+        RunLoop.main.add(refreshTimer!, forMode: .common)
     }
 
     private func refresh(force: Bool = false) async {
