@@ -1,0 +1,44 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:token-my-bar}/packages/menubar",
+            "name": "Debug TokenMyBar (packages/menubar)",
+            "target": "TokenMyBar",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug TokenMyBar (packages/menubar)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:token-my-bar}/packages/menubar",
+            "name": "Release TokenMyBar (packages/menubar)",
+            "target": "TokenMyBar",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release TokenMyBar (packages/menubar)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:token-my-bar}/packages/menubar",
+            "name": "Debug token-my-bar (packages/menubar)",
+            "target": "token-my-bar",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug token-my-bar (packages/menubar)"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:token-my-bar}/packages/menubar",
+            "name": "Release token-my-bar (packages/menubar)",
+            "target": "token-my-bar",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release token-my-bar (packages/menubar)"
+        }
+    ]
+}

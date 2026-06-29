@@ -1,0 +1,10 @@
+packages:
+  - "packages/*"
+
+onlyBuiltDependencies:
+  - esbuild
+
+allowBuilds:
+  esbuild: true
+
+minimumReleaseAge: 2880

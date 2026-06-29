@@ -1,0 +1,16 @@
+node_modules/
+.DS_Store
+
+# Web
+packages/www/dist/
+packages/www/.vite/
+*.tsbuildinfo
+
+# SwiftPM
+packages/menubar/.build/
+packages/menubar/.swiftpm/
+
+# Xcode
+DerivedData/
+*.xcuserdata/
+*.xcuserstate

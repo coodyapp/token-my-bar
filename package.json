@@ -1,0 +1,14 @@
+{
+  "name": "token-my-bar-monorepo",
+  "private": true,
+  "packageManager": "pnpm@11.1.2",
+  "scripts": {
+    "dev:www": "pnpm --filter @token-my-bar/www dev",
+    "build": "pnpm build:www && pnpm build:menubar",
+    "build:www": "pnpm --filter @token-my-bar/www build",
+    "build:menubar": "swift build --package-path packages/menubar",
+    "test": "pnpm --filter @token-my-bar/www test && swift test --package-path packages/menubar",
+    "test:menubar": "swift test --package-path packages/menubar",
+    "test:www": "pnpm --filter @token-my-bar/www test"
+  }
+}
