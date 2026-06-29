@@ -41,8 +41,8 @@ counts are shown as observed history only and never become a quota percentage.
 
 ## Key files
 
-- OAuth provider: `Sources/TokenMyBarCore/Providers/Codex/CodexOAuthUsageProvider.swift`
-- JSON parsing helpers: `Sources/TokenMyBarCore/Providers/Support/RemoteJSON.swift`
+- OAuth provider: `Sources/TokenMyBarCore/Vendors/Codex/CodexOAuthUsageProvider.swift`
+- JSON parsing helpers: `Sources/TokenMyBarCore/Vendors/Support/RemoteJSON.swift`
 - Local fallback: `Sources/TokenMyBarCore/LocalJSONLUsageProvider.swift`
 
 ## Not implemented (future)

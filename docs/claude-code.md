@@ -44,9 +44,9 @@ and never become a quota percentage.
 
 ## Key files
 
-- OAuth provider: `Sources/TokenMyBarCore/Providers/ClaudeCode/ClaudeOAuthUsageProvider.swift`
-- Keychain reader: `Sources/TokenMyBarCore/Providers/Support/Keychain.swift`
-- JSON parsing helpers: `Sources/TokenMyBarCore/Providers/Support/RemoteJSON.swift`
+- OAuth provider: `Sources/TokenMyBarCore/Vendors/ClaudeCode/ClaudeOAuthUsageProvider.swift`
+- Keychain reader: `Sources/TokenMyBarCore/Vendors/Support/Keychain.swift`
+- JSON parsing helpers: `Sources/TokenMyBarCore/Vendors/Support/RemoteJSON.swift`
 - Local fallback: `Sources/TokenMyBarCore/LocalJSONLUsageProvider.swift`
 
 ## Not implemented (future)

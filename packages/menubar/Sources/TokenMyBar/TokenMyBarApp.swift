@@ -27,7 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var refreshTimer: Timer?
     private var snapshots: [ProviderSnapshot] = []
     private var isRefreshing = false
-    private var popoverContentSize = NSSize(width: 640, height: 720)
+    private var popoverContentSize = NSSize(width: 520, height: 520)
 
     // MARK: Lifecycle
 
@@ -91,8 +91,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func preferredPopoverSize(for button: NSStatusBarButton) -> NSSize {
         let screen = button.window?.screen ?? NSScreen.main
         let visibleHeight = screen?.visibleFrame.height ?? 900
-        let height = max(500, min(720, visibleHeight - 96))
-        return NSSize(width: 640, height: height)
+        let height = min(estimatedPopoverHeight(), visibleHeight - 48)
+        return NSSize(width: 520, height: max(180, height))
+    }
+
+    private func estimatedPopoverHeight() -> CGFloat {
+        let active = snapshots.filter { $0.status == .ok || $0.status == .stale }
+        guard !active.isEmpty else { return 130 }
+
+        let headerHeight: CGFloat = 89
+        let contentPadding: CGFloat = 40
+        let dividerHeight: CGFloat = CGFloat(max(0, active.count - 1))
+        let vendorHeights = active.reduce(CGFloat(0)) { total, snapshot in
+            let rowCount = max(snapshot.usageRows.count, 1)
+            return total + 30 + CGFloat(rowCount) * 48
+        }
+        return headerHeight + 1 + contentPadding + dividerHeight + CGFloat(max(0, active.count - 1)) * 24 + vendorHeights
     }
 
     private func showContextMenu() {
@@ -218,6 +232,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let button = statusItem?.button {
             button.image = nil
             button.attributedTitle = statusTitle()
+            if popover.isShown {
+                popoverContentSize = preferredPopoverSize(for: button)
+                popover.contentSize = popoverContentSize
+            }
         }
 
         let actions = PopoverActions(
@@ -231,7 +249,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             rootView: PopoverView(
                 snapshots: snapshots,
                 actions: actions,
-                contentHeight: popoverContentSize.height - 20
+                contentHeight: popoverContentSize.height
             )
         )
     }
@@ -267,6 +285,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func effectiveDisplayMode(for segments: [(providerID: ProviderID, percent: Double, title: String)]) -> DisplayMode {
+        if settings.hideLabelsWhenSpaceLimited, segments.count > 3 { return .iconsOnly }
         if settings.collapseToSummaryAutomatically, segments.count > 2 { return .summary }
         return settings.displayMode
     }
@@ -310,7 +329,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil) {
             let attachment = NSTextAttachment()
             attachment.image = image
-            attachment.bounds = NSRect(x: 0, y: -2, width: 14, height: 14)
+            attachment.bounds = NSRect(x: 0, y: -1, width: 11, height: 11)
             result.append(NSAttributedString(attachment: attachment))
             if !title.isEmpty {
                 result.append(NSAttributedString(string: " "))
@@ -325,7 +344,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return NSAttributedString(
             string: title,
             attributes: [
-                .font: NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .semibold),
+                .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .semibold),
                 .foregroundColor: color,
             ]
         )

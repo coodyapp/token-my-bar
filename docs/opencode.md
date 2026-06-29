@@ -61,8 +61,8 @@ assignments.
 
 ## Key files
 
-- Cookie auth + browser import: `Sources/TokenMyBarCore/Providers/Support/Keychain.swift`,
-  `Sources/TokenMyBarCore/Providers/Support/ChromiumCookieDecryptor.swift`,
-  `Sources/TokenMyBarCore/Providers/OpenCode/BrowserCookieImporter.swift`
-- Provider + parsing: `Sources/TokenMyBarCore/Providers/OpenCode/OpenCodeCookieUsageProvider.swift`
+- Cookie auth + browser import: `Sources/TokenMyBarCore/Vendors/Support/Keychain.swift`,
+  `Sources/TokenMyBarCore/Vendors/Support/ChromiumCookieDecryptor.swift`,
+  `Sources/TokenMyBarCore/Vendors/OpenCode/BrowserCookieImporter.swift`
+- Provider + parsing: `Sources/TokenMyBarCore/Vendors/OpenCode/OpenCodeCookieUsageProvider.swift`
 - Local fallback: `Sources/TokenMyBarCore/OpenCodeLocalUsageProvider.swift`

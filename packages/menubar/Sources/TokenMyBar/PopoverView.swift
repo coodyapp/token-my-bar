@@ -32,23 +32,19 @@ struct PopoverView: View {
             header
             Divider()
             content
-            Divider()
-            footer
         }
-        .frame(width: 620, height: contentHeight)
+        .frame(width: 520, height: contentHeight)
         .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(.regularMaterial)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(Color(nsColor: .separatorColor).opacity(0.45), lineWidth: 1)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .padding(10)
-        .shadow(color: .black.opacity(0.22), radius: 18, y: 8)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .scaleEffect(didAppear ? 1 : 0.985, anchor: .topTrailing)
-        .offset(x: didAppear ? 0 : 28)
+        .offset(x: didAppear ? 0 : 12)
         .opacity(didAppear ? 1 : 0)
         .animation(.spring(response: 0.32, dampingFraction: 0.9), value: didAppear)
         .onAppear { didAppear = true }
@@ -56,18 +52,18 @@ struct PopoverView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 16) {
+        HStack(alignment: .center, spacing: 18) {
             Image(systemName: "chart.bar.xaxis")
-                .font(.system(size: 30, weight: .bold))
-                .foregroundStyle(.red)
-                .frame(width: 40)
+                .font(.system(size: 38, weight: .bold))
+                .foregroundStyle(.red.gradient)
+                .frame(width: 48)
 
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("TokenMyBar")
-                    .font(.system(size: 17, weight: .bold))
+                    .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(.primary)
                 Label("Updated \(updatedText)", systemImage: "clock")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(.secondary)
                     .labelStyle(.titleAndIcon)
             }
@@ -80,12 +76,14 @@ struct PopoverView: View {
                             .scaleEffect(0.62)
                     } else {
                         Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 18, weight: .semibold))
+                            .font(.system(size: 22, weight: .medium))
                     }
                 }
-                .frame(width: 34, height: 34)
+                .frame(width: 44, height: 44)
+                .background(Circle().fill(Color(nsColor: .controlBackgroundColor).opacity(0.58)))
+                .overlay(Circle().stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 1))
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.plain)
             .foregroundStyle(.primary)
             .disabled(actions.isRefreshing)
             .keyboardShortcut("r", modifiers: .command)
@@ -97,18 +95,20 @@ struct PopoverView: View {
                 Divider()
                 Button("Quit TokenMyBar", action: actions.onQuit)
             } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 22, weight: .bold))
+                Image(systemName: "gearshape")
+                    .font(.system(size: 22, weight: .medium))
                     .foregroundStyle(.primary)
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(Color(nsColor: .controlBackgroundColor).opacity(0.58)))
+                    .overlay(Circle().stroke(Color(nsColor: .separatorColor).opacity(0.55), lineWidth: 1))
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .fixedSize()
             .accessibilityLabel("More actions")
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 20)
-        .padding(.bottom, 18)
+        .padding(.horizontal, 22)
+        .padding(.vertical, 22)
     }
 
     @ViewBuilder
@@ -116,57 +116,30 @@ struct PopoverView: View {
         if activeSnapshots.isEmpty {
             VStack(spacing: 8) {
                 Image(systemName: "tray")
-                    .font(.largeTitle)
+                    .font(.system(size: 28, weight: .semibold))
                     .foregroundStyle(.secondary)
                 Text("No active vendors")
-                    .font(.headline)
+                    .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(.primary)
                 Text("Enable a vendor in Settings or refresh usage.")
-                    .font(.caption)
+                    .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            ScrollViewReader { proxy in
-                ScrollView(showsIndicators: false) {
-                    LazyVStack(spacing: 18) {
-                        Color.clear
-                            .frame(height: 0)
-                            .id("top")
-                        ForEach(Array(activeSnapshots.enumerated()), id: \.element.id) { index, snapshot in
-                            VendorSection(snapshot: snapshot)
-                            if index < activeSnapshots.count - 1 {
-                                Divider()
-                                    .overlay(Color(nsColor: .separatorColor).opacity(0.55))
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 18)
-                }
-                .onAppear {
-                    DispatchQueue.main.async {
-                        proxy.scrollTo("top", anchor: .top)
+            VStack(spacing: 0) {
+                ForEach(Array(activeSnapshots.enumerated()), id: \.element.id) { index, snapshot in
+                    VendorSection(snapshot: snapshot)
+                    if index < activeSnapshots.count - 1 {
+                        Divider()
+                            .overlay(Color(nsColor: .separatorColor).opacity(0.55))
+                            .padding(.vertical, 12)
                     }
                 }
             }
+            .padding(.horizontal, 22)
+            .padding(.vertical, 20)
         }
-    }
-
-    private var footer: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "info.circle")
-                .foregroundStyle(.secondary)
-            Text("Usage resets are based on each vendor's schedule.")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.secondary)
-            Spacer()
-            Button("Manage Tokens…", action: actions.onSettings)
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-        }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 14)
     }
 
 }
@@ -182,43 +155,41 @@ private struct VendorSection: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .center, spacing: 12) {
-                Image(systemName: iconName)
-                    .font(.system(size: 24, weight: .semibold))
-                    .foregroundStyle(.primary)
-                    .frame(width: 28)
+        VStack(alignment: .leading, spacing: 18) {
+            headerRow
+            VStack(alignment: .leading, spacing: 16) {
+                ForEach(rows, id: \.id) { row in
+                    UsageRowView(row: row, isStale: isStale)
+                }
+            }
+        }
+    }
+
+    private var headerRow: some View {
+        HStack(alignment: .center, spacing: 16) {
+            Image(systemName: iconName)
+                .font(.system(size: 25, weight: .semibold))
+                .foregroundStyle(.primary)
+                .frame(width: 40)
+            HStack(alignment: .center, spacing: 8) {
                 Text(snapshot.displayName)
                     .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(.primary)
                 if let plan = snapshot.planName {
                     Text(plan)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 12, weight: .semibold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(Color(nsColor: .controlBackgroundColor).opacity(0.62)))
                         .foregroundStyle(.secondary)
                 }
-                Spacer()
-                Text(snapshot.status.label)
-                    .font(.system(size: 14, weight: .bold))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
-                    .background(statusColor.opacity(0.18), in: Capsule())
-                    .foregroundStyle(statusColor)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.secondary)
             }
-
+            Spacer()
             if let authSummary = snapshot.authSummary {
                 Text(authSummary)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.secondary)
-                    .padding(.leading, 40)
-            }
-
-            VStack(spacing: 18) {
-                ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
-                    UsageRowView(row: row, isStale: isStale)
-                }
+                    .lineLimit(1)
             }
         }
     }
@@ -228,14 +199,6 @@ private struct VendorSection: View {
         case .codex: "terminal"
         case .claudeCode: "sparkles"
         case .opencode: "chevron.left.forwardslash.chevron.right"
-        }
-    }
-
-    private var statusColor: Color {
-        switch snapshot.status {
-        case .ok: .green
-        case .loading, .stale, .noData: .orange
-        case .unauthenticated, .error: .red
         }
     }
 }
@@ -265,39 +228,34 @@ private struct UsageRowView: View {
     }
 
     var body: some View {
-        Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 8) {
-            GridRow(alignment: .center) {
-                if let iconName = row.iconName {
-                    Image(systemName: iconName)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 26)
-                } else {
-                    Color.clear.frame(width: 26)
-                }
-                Text(row.title)
-                    .font(.system(size: 15, weight: .bold))
+        HStack(alignment: .center, spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(Color(nsColor: .controlBackgroundColor).opacity(0.68))
+                    .frame(width: 32, height: 32)
+                Image(systemName: row.iconName ?? "chart.bar")
+                    .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(.primary)
-                    .gridCellColumns(2)
             }
 
-            GridRow(alignment: .center) {
-                Color.clear.frame(width: 26)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(row.title)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.primary)
                 Text(usedText)
-                    .font(.system(size: 14, weight: .semibold).monospacedDigit())
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
-                    .frame(width: 64, alignment: .leading)
-                UsageMeter(percent: clampedPercent ?? 0, color: isStale ? .secondary : barColor)
-                    .frame(height: 5)
-                if let detail = row.detail {
-                    Text(detail)
-                        .font(.system(size: 14, weight: .semibold).monospacedDigit())
-                        .foregroundStyle(.secondary)
-                        .frame(width: 110, alignment: .trailing)
-                } else {
-                    Color.clear.frame(width: 110)
-                }
+                    .lineLimit(1)
             }
+            .frame(width: 130, alignment: .leading)
+
+            UsageMeter(percent: clampedPercent ?? 0, color: isStale ? .secondary : barColor)
+                .frame(height: 8)
+
+            Text(row.percent.map { "\(Int($0.rounded()))%" } ?? row.value)
+                .font(.system(size: 15, weight: .medium).monospacedDigit())
+                .foregroundStyle(.secondary)
+                .frame(width: 44, alignment: .trailing)
         }
     }
 }
@@ -308,10 +266,10 @@ private struct UsageMeter: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let width = max(8, proxy.size.width * min(max(percent, 0), 100) / 100)
+            let width = max(percent > 0 ? 8 : 0, proxy.size.width * min(max(percent, 0), 100) / 100)
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(Color(nsColor: .separatorColor).opacity(0.30))
+                    .fill(Color(nsColor: .separatorColor).opacity(0.36))
                 Capsule()
                     .fill(color)
                     .frame(width: width)
