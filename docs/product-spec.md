@@ -1,5 +1,7 @@
 # TokenMyBar Product Spec
 
+> Note: This is the original product brief. See [architecture.md](architecture.md) for the current design.
+
 ## One-Line Description
 
 TokenMyBar does one thing perfectly: it turns your live AI token usage into a single, glanceable application right in your Mac's menu bar.

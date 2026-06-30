@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!--
+    Hardened runtime, NOT sandboxed: TokenMyBar reads existing local
+    credentials (~/.codex, ~/.claude, browser cookie DBs, Keychain) that the
+    App Sandbox would block. Each Keychain read still triggers the OS consent
+    prompt. No JIT, no executable-memory, no library-validation exceptions.
+  -->
+  <key>com.apple.security.app-sandbox</key>
+  <false/>
+</dict>
+</plist>

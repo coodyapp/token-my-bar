@@ -10,6 +10,9 @@ packages/www/.vite/
 packages/menubar/.build/
 packages/menubar/.swiftpm/
 
+# Packaging output (.app, .dmg)
+packages/menubar/dist/
+
 # Xcode
 DerivedData/
 *.xcuserdata/
