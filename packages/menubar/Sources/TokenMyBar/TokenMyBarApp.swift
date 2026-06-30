@@ -30,7 +30,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var refreshTimer: Timer?
     private var snapshots: [ProviderSnapshot] = []
     private var isRefreshing = false
-    private let popoverWidth: CGFloat = 480
+    // Matches PopoverView's pinned width; the hosting controller's
+    // preferredContentSize lets SwiftUI drive height from there.
+    private let popoverWidth: CGFloat = 380
 
     // MARK: Lifecycle
 
@@ -250,6 +252,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func statusTitle() -> NSAttributedString {
         let segments = statusSegments()
         if segments.isEmpty {
+            // No usable percent: flag attention if a vendor needs sign-in or errored,
+            // instead of a silent "--" that hides the problem.
+            if snapshots.contains(where: { $0.status == .unauthenticated || $0.status == .error }) {
+                return statusSegment(iconName: "exclamationmark.triangle", title: "")
+            }
             return statusSegment(iconName: "chart.bar.xaxis", title: "--")
         }
 
@@ -265,11 +272,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
             switch mode {
             case .iconPercentage, .custom:
-                title.append(statusSegment(iconName: iconName(for: segment.providerID), title: segment.title))
+                title.append(statusSegment(iconName: segment.providerID.iconName, title: segment.title))
             case .percentageOnly:
                 title.append(statusText(segment.title))
             case .iconsOnly:
-                title.append(statusSegment(iconName: iconName(for: segment.providerID), title: ""))
+                title.append(statusSegment(iconName: segment.providerID.iconName, title: ""))
             case .summary:
                 break
             }
@@ -287,7 +294,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         switch settings.summaryCalculation {
         case .highestUsage:
             guard let highest = segments.max(by: { $0.percent < $1.percent }) else { return statusText("--") }
-            return statusSegment(iconName: iconName(for: highest.providerID), title: highest.title)
+            return statusSegment(iconName: highest.providerID.iconName, title: highest.title)
         case .averageUsage:
             let average = segments.map(\.percent).reduce(0, +) / Double(segments.count)
             return statusSegment(iconName: "chart.bar.xaxis", title: "\(Int(average.rounded()))%")
@@ -296,7 +303,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                   let selected = segments.first(where: { $0.providerID == primary }) ?? segments.first else {
                 return statusText("--")
             }
-            return statusSegment(iconName: iconName(for: selected.providerID), title: selected.title)
+            return statusSegment(iconName: selected.providerID.iconName, title: selected.title)
         }
     }
 
@@ -343,13 +350,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         )
     }
 
-    private func iconName(for providerID: ProviderID) -> String {
-        switch providerID {
-        case .codex: "terminal"
-        case .claudeCode: "sparkles"
-        case .opencode: "chevron.left.forwardslash.chevron.right"
-        }
-    }
 }
 #else
 @main

@@ -22,8 +22,11 @@ struct PopoverView: View {
         static let contentHorizontal: CGFloat = 14
     }
 
-    private var activeSnapshots: [ProviderSnapshot] {
-        snapshots.filter { $0.status == .ok || $0.status == .stale }
+    /// Vendors worth a row: usage vendors plus any in an error / sign-in /
+    /// no-data state, so the user sees *why* a vendor is missing instead of a
+    /// blank empty state. Only purely-loading (no content) vendors are hidden.
+    private var displaySnapshots: [ProviderSnapshot] {
+        snapshots.filter { $0.status != .loading }
     }
 
     private var updatedText: String {
@@ -58,11 +61,11 @@ struct PopoverView: View {
 
     @ViewBuilder
     private var content: some View {
-        if activeSnapshots.isEmpty {
+        if displaySnapshots.isEmpty {
             EmptyStateView()
         } else {
             VStack(spacing: 0) {
-                ForEach(Array(activeSnapshots.enumerated()), id: \.element.id) { index, snapshot in
+                ForEach(Array(displaySnapshots.enumerated()), id: \.element.id) { index, snapshot in
                     if index > 0 { Divider() }
                     VendorSection(snapshot: snapshot)
                 }
@@ -193,7 +196,7 @@ private struct VendorHeader: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
-            Image(systemName: iconName)
+            Image(systemName: snapshot.providerID.iconName)
                 .font(.system(size: 13, weight: .semibold))
                 .symbolRenderingMode(.monochrome)
                 .foregroundStyle(.primary)
@@ -213,14 +216,6 @@ private struct VendorHeader: View {
             StatusBadge(status: snapshot.status)
         }
     }
-
-    private var iconName: String {
-        switch snapshot.providerID {
-        case .codex: "terminal"
-        case .claudeCode: "sparkles"
-        case .opencode: "chevron.left.forwardslash.chevron.right"
-        }
-    }
 }
 
 /// Premium-tier capsule (e.g. "Plus"), shown only when the vendor reports a plan.
@@ -238,16 +233,33 @@ private struct PlanBadge: View {
     }
 }
 
-/// Trailing status capsule. Green "OK" for healthy vendors; yellow for stale data.
+/// Trailing status capsule. Color and glyph track the vendor's state so
+/// errors, expired auth, and missing data read at a glance — not just OK/Stale.
 private struct StatusBadge: View {
     let status: ProviderStatus
 
-    private var tint: Color { status == .ok ? .green : .yellow }
-    private var iconName: String { status == .ok ? "checkmark.circle" : "clock" }
-    private var label: String { status == .ok ? "OK" : "Stale" }
+    private var tint: Color {
+        switch status {
+        case .ok: .green
+        case .stale, .loading: .yellow
+        case .unauthenticated: .orange
+        case .error: .red
+        case .noData: .secondary
+        }
+    }
+
+    private var iconName: String {
+        switch status {
+        case .ok: "checkmark.circle"
+        case .stale, .loading: "clock"
+        case .unauthenticated: "person.crop.circle.badge.exclamationmark"
+        case .error: "exclamationmark.triangle"
+        case .noData: "questionmark.circle"
+        }
+    }
 
     var body: some View {
-        Label(label, systemImage: iconName)
+        Label(status.label, systemImage: iconName)
             .labelStyle(.titleAndIcon)
             .font(.system(size: 11, weight: .semibold))
             .foregroundStyle(tint)
@@ -255,7 +267,7 @@ private struct StatusBadge: View {
             .padding(.vertical, 2.5)
             .background(Capsule().fill(tint.opacity(0.14)))
             .overlay(Capsule().stroke(tint.opacity(0.55), lineWidth: 1))
-            .accessibilityLabel(label)
+            .accessibilityLabel(status.label)
     }
 }
 

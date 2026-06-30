@@ -1,6 +1,7 @@
 #if os(macOS)
 import Foundation
 import ServiceManagement
+import TokenMyBarCore
 
 /// Thin wrapper over `SMAppService.mainApp` for launch-at-login control.
 ///
@@ -23,7 +24,7 @@ struct LaunchAtLoginManager {
                 }
             }
         } catch {
-            NSLog("TokenMyBar launch-at-login update failed: \(error.localizedDescription)")
+            Log.app.error("launch-at-login update failed: \(error.localizedDescription)")
         }
     }
 }
