@@ -13,10 +13,15 @@ public struct ClaudeOAuthUsageProvider: ProviderClient {
             request.setValue("oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
             request.setValue("TokenMyBar/0.1 claude-code/unknown", forHTTPHeaderField: "User-Agent")
             return try await Self.snapshot(from: RemoteJSON.fetchObject(request))
-        } catch AuthError.missingCredentials {
-            return missingAuth("Claude OAuth credentials not found")
         } catch {
-            return errorSnapshot("Claude OAuth usage failed")
+            return .failure(
+                error,
+                providerID: providerID,
+                source: .oauth,
+                authSummary: "Claude OAuth",
+                missingMessage: "Claude OAuth credentials not found",
+                failureMessage: "Claude OAuth usage failed"
+            )
         }
     }
 
@@ -105,10 +110,14 @@ public struct ClaudeOAuthUsageProvider: ProviderClient {
             return token
         }
 
-        if let data = Keychain.genericPassword(service: "Claude Code-credentials"),
-           let object = try? JSONSerialization.jsonObject(with: data),
-           let token = tokenFromKeychainPayload(object) {
-            return token
+        // Scan every matching Keychain item and pick the first that actually
+        // carries a Claude OAuth token, so an unrelated item under the same
+        // service name can't shadow the real credential.
+        for data in Keychain.genericPasswords(service: "Claude Code-credentials") {
+            if let object = try? JSONSerialization.jsonObject(with: data),
+               let token = tokenFromKeychainPayload(object) {
+                return token
+            }
         }
 
         throw AuthError.missingCredentials
@@ -123,13 +132,5 @@ public struct ClaudeOAuthUsageProvider: ProviderClient {
             return token
         }
         return RemoteJSON.findString(in: object, keys: ["access_token", "accessToken"])
-    }
-
-    private func missingAuth(_ message: String) -> ProviderSnapshot {
-        ProviderSnapshot(providerID: providerID, status: .unauthenticated, usedTokens: nil, primarySource: .oauth, sources: [.oauth], confidence: .low, isEstimated: false, message: message, authSummary: "Claude OAuth")
-    }
-
-    private func errorSnapshot(_ message: String) -> ProviderSnapshot {
-        ProviderSnapshot(providerID: providerID, status: .error, usedTokens: nil, primarySource: .oauth, sources: [.oauth, .api], confidence: .low, isEstimated: false, message: message, authSummary: "Claude OAuth")
     }
 }

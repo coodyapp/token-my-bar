@@ -166,7 +166,7 @@ extension OpenCodeLocalUsage {
                 key: "session",
                 title: "Session",
                 subtitle: "Last 5h local tokens",
-                value: Self.formatCount(sessionTokens),
+                value: Format.count(sessionTokens),
                 percent: nil,
                 trend: .unknown,
                 unit: .tokens
@@ -175,7 +175,7 @@ extension OpenCodeLocalUsage {
                 key: "weekly",
                 title: "Weekly",
                 subtitle: "Last 7d local tokens",
-                value: Self.formatCount(weeklyTokens),
+                value: Format.count(weeklyTokens),
                 percent: nil,
                 trend: .unknown,
                 unit: .tokens
@@ -184,21 +184,11 @@ extension OpenCodeLocalUsage {
                 key: "cache-reasoning",
                 title: "Cache + reasoning",
                 subtitle: "Local cache/reasoning tokens",
-                value: Self.formatCount(tokensCacheRead + tokensCacheWrite + tokensReasoning),
+                value: Format.count(tokensCacheRead + tokensCacheWrite + tokensReasoning),
                 percent: nil,
                 trend: .unknown,
                 unit: .tokens
             ),
         ]
-    }
-
-    private static func formatCount(_ value: Int) -> String {
-        if value >= 1_000_000 {
-            return "\(value / 1_000_000)M"
-        }
-        if value >= 1_000 {
-            return "\(value / 1_000)K"
-        }
-        return "\(value)"
     }
 }

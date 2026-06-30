@@ -47,9 +47,3 @@ import Testing
     #expect(RemoteJSON.percent(in: ["percent": 0.39]) == 39)
     #expect(RemoteJSON.percent(in: ["other": 1]) == nil)
 }
-
-@Test func parseJavaScriptObjectExtractsEmbeddedJSON() {
-    let parsed = RemoteJSON.parseJavaScriptObject("someFn(1, {\"a\":2})trailing")
-    #expect(parsed?["a"] as? Int == 2)
-    #expect(RemoteJSON.parseJavaScriptObject("no object here") == nil)
-}

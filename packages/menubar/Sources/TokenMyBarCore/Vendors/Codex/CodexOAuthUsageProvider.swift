@@ -14,10 +14,15 @@ public struct CodexOAuthUsageProvider: ProviderClient {
                 request.setValue(accountID, forHTTPHeaderField: "ChatGPT-Account-Id")
             }
             return try await Self.snapshot(from: RemoteJSON.fetchObject(request))
-        } catch AuthError.missingCredentials {
-            return missingAuth("Codex OAuth credentials not found")
         } catch {
-            return errorSnapshot("Codex OAuth usage failed")
+            return .failure(
+                error,
+                providerID: providerID,
+                source: .oauth,
+                authSummary: "Codex OAuth",
+                missingMessage: "Codex OAuth credentials not found",
+                failureMessage: "Codex OAuth usage failed"
+            )
         }
     }
 
@@ -64,13 +69,5 @@ public struct CodexOAuthUsageProvider: ProviderClient {
             accessToken: token,
             accountID: RemoteJSON.findString(in: object, keys: ["account_id", "accountId"])
         )
-    }
-
-    private func missingAuth(_ message: String) -> ProviderSnapshot {
-        ProviderSnapshot(providerID: providerID, status: .unauthenticated, usedTokens: nil, primarySource: .oauth, sources: [.oauth], confidence: .low, isEstimated: false, message: message, authSummary: "Codex OAuth")
-    }
-
-    private func errorSnapshot(_ message: String) -> ProviderSnapshot {
-        ProviderSnapshot(providerID: providerID, status: .error, usedTokens: nil, primarySource: .oauth, sources: [.oauth, .api], confidence: .low, isEstimated: false, message: message, authSummary: "Codex OAuth")
     }
 }

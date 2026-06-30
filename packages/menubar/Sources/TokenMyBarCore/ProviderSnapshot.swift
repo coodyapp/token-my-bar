@@ -15,6 +15,19 @@ public enum ProviderID: String, CaseIterable, Codable, Sendable {
             "OpenCode"
         }
     }
+
+    /// SF Symbol used to represent this vendor in the menu bar and popover.
+    /// Lives here so the UI derives it instead of duplicating a switch per view.
+    public var iconName: String {
+        switch self {
+        case .codex:
+            "terminal"
+        case .claudeCode:
+            "sparkles"
+        case .opencode:
+            "chevron.left.forwardslash.chevron.right"
+        }
+    }
 }
 
 public enum ProviderStatus: String, Codable, Sendable {

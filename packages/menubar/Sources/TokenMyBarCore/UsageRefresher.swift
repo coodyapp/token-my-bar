@@ -45,9 +45,25 @@ public actor UsageRefresher {
         let previous = (try? await store.load()) ?? []
 
         // Single-flight across processes: only the lock holder fetches.
-        guard await store.tryBeginRefresh() else { return previous }
-        defer { Task { await store.endRefresh() } }
+        guard await store.tryBeginRefresh() else {
+            Log.refresh.debug("refresh skipped: another instance holds the lock")
+            return previous
+        }
+        // Release the lock synchronously before returning (no detached Task, so
+        // the lock is always freed by the time refresh() returns).
+        let merged = await fetchAndMerge(providers: providers, previous: previous, ttl: ttl, now: now)
+        await store.endRefresh()
+        return merged
+    }
 
+    /// Runs under the refresh lock: re-checks freshness, fetches enabled
+    /// providers, merges with the previous cache, and persists atomically.
+    private func fetchAndMerge(
+        providers: [any ProviderClient],
+        previous: [ProviderSnapshot],
+        ttl: TimeInterval,
+        now: Date
+    ) async -> [ProviderSnapshot] {
         if let fresh = await store.loadIfFresh(ttl: ttl, now: now) {
             return fresh
         }
@@ -63,9 +79,14 @@ public actor UsageRefresher {
             return collected
         }
 
+        for snapshot in results where snapshot.status != .ok {
+            Log.provider.notice("\(snapshot.providerID.rawValue) refresh returned \(snapshot.status.rawValue)")
+        }
+
         let merged = SnapshotMerger.merge(fresh: results, cached: previous)
         let toSave = SnapshotMerger.snapshotsToSave(merged: merged, cached: previous)
         try? await store.save(toSave)
+        Log.refresh.info("refresh complete: \(merged.count) vendors")
         return merged
     }
 

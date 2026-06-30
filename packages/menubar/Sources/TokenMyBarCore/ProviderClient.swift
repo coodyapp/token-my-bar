@@ -58,23 +58,3 @@ public struct FallbackProvider<Primary: ProviderClient, Fallback: ProviderClient
         )
     }
 }
-
-public struct LocalProbeProvider: ProviderClient {
-    public let providerID: ProviderID
-
-    public init(providerID: ProviderID) {
-        self.providerID = providerID
-    }
-
-    public func snapshot() async -> ProviderSnapshot {
-        ProviderSnapshot(
-            providerID: providerID,
-            status: .loading,
-            usedTokens: nil,
-            primarySource: .localFile,
-            confidence: .low,
-            isEstimated: true,
-            message: "Vendor spike not implemented yet"
-        )
-    }
-}

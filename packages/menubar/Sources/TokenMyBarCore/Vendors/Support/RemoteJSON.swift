@@ -12,16 +12,16 @@ enum RemoteJSON {
         return request
     }
 
-    static func fetchObject(_ request: URLRequest) async throws -> [String: Any] {
-        let data = try await fetchData(request)
+    static func fetchObject(_ request: URLRequest, session: URLSession = .shared) async throws -> [String: Any] {
+        let data = try await fetchData(request, session: session)
         guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw AuthError.parseFailed
         }
         return object
     }
 
-    static func fetchText(_ request: URLRequest) async throws -> String {
-        let data = try await fetchData(request)
+    static func fetchText(_ request: URLRequest, session: URLSession = .shared) async throws -> String {
+        let data = try await fetchData(request, session: session)
         return String(decoding: data, as: UTF8.self)
     }
 
@@ -149,19 +149,34 @@ enum RemoteJSON {
             .joined(separator: " ")
     }
 
-    static func parseJavaScriptObject(_ text: String) -> [String: Any]? {
-        guard let first = text.firstIndex(of: "{"), let last = text.lastIndex(of: "}") else { return nil }
-        let json = String(text[first...last])
-        guard let data = json.data(using: .utf8) else { return nil }
-        return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    /// One automatic retry (2 attempts total) for transient failures.
+    private static let maxRetries = 1
+
+    /// HTTP statuses worth retrying: request timeout, rate limit, and 5xx.
+    private static func isTransient(_ status: Int) -> Bool {
+        status == 408 || status == 429 || (500..<600).contains(status)
     }
 
-    private static func fetchData(_ request: URLRequest) async throws -> Data {
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw AuthError.parseFailed
+    /// Fetches with a status-aware error and a bounded retry on transient
+    /// failures (5xx/429/408 and network errors). Non-2xx responses throw
+    /// `AuthError.http(status)` so providers can map 401/403 to a sign-in
+    /// state instead of a generic error. 4xx (except 408/429) never retries.
+    private static func fetchData(_ request: URLRequest, session: URLSession = .shared, attempt: Int = 0) async throws -> Data {
+        do {
+            let (data, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse else { throw AuthError.parseFailed }
+            if (200..<300).contains(http.statusCode) { return data }
+            guard isTransient(http.statusCode), attempt < maxRetries else {
+                throw AuthError.http(http.statusCode)
+            }
+        } catch let error as AuthError {
+            throw error
+        } catch {
+            // Network-level failure (URLError etc.) — retry while attempts remain.
+            guard attempt < maxRetries else { throw error }
         }
-        return data
+        try? await Task.sleep(nanoseconds: UInt64((attempt + 1) * 500) * 1_000_000)
+        return try await fetchData(request, session: session, attempt: attempt + 1)
     }
 
     private static func double(_ object: [String: Any], keys: [String]) -> Double? {

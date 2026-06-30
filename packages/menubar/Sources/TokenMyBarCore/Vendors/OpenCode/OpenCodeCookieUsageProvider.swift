@@ -14,11 +14,16 @@ public struct OpenCodeCookieUsageProvider: ProviderClient {
                 let snapshot = Self.snapshot(from: object)
                 if snapshot.status == .ok { return snapshot }
             }
-            return ProviderSnapshot(providerID: providerID, status: .noData, usedTokens: nil, primarySource: .browserCookie, sources: [.browserCookie, .api], confidence: .low, isEstimated: false, message: "No OpenCode workspace reported usage", authSummary: "OpenCode cookie")
-        } catch AuthError.missingCredentials {
-            return ProviderSnapshot(providerID: providerID, status: .unauthenticated, usedTokens: nil, primarySource: .browserCookie, sources: [.browserCookie], confidence: .low, isEstimated: false, message: "OpenCode cookie not configured", authSummary: "OpenCode cookie")
+            return .noData(providerID, source: .browserCookie, message: "No OpenCode workspace reported usage", authSummary: "OpenCode cookie")
         } catch {
-            return ProviderSnapshot(providerID: providerID, status: .error, usedTokens: nil, primarySource: .browserCookie, sources: [.browserCookie, .api], confidence: .low, isEstimated: false, message: "OpenCode cookie usage failed", authSummary: "OpenCode cookie")
+            return .failure(
+                error,
+                providerID: providerID,
+                source: .browserCookie,
+                authSummary: "OpenCode cookie",
+                missingMessage: "OpenCode cookie not configured",
+                failureMessage: "OpenCode cookie usage failed"
+            )
         }
     }
 
@@ -80,8 +85,11 @@ public struct OpenCodeCookieUsageProvider: ProviderClient {
     /// response, preserving order.
     private static func workspaceIDs(cookie: String) async throws -> [String] {
         if let override = ProcessInfo.processInfo.environment["TOKEN_MY_BAR_OPENCODE_WORKSPACE_ID"], !override.isEmpty {
-            let id = override.components(separatedBy: "/").last ?? override
-            return [id]
+            let candidate = override.components(separatedBy: "/").last ?? override
+            // Only trust a well-formed id. A malformed override (path traversal,
+            // query chars) falls through to the server lookup instead of being
+            // interpolated raw into the workspace URL.
+            if isValidWorkspaceID(candidate) { return [candidate] }
         }
 
         let url = "https://opencode.ai/_server?id=\(workspacesServerFunctionID)"
@@ -92,6 +100,11 @@ public struct OpenCodeCookieUsageProvider: ProviderClient {
         let ids = workspaceIDs(in: text)
         guard !ids.isEmpty else { throw AuthError.parseFailed }
         return ids
+    }
+
+    /// A workspace id is ASCII alphanumerics and underscores only (e.g. `wrk_…`).
+    static func isValidWorkspaceID(_ id: String) -> Bool {
+        !id.isEmpty && id.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "_") }
     }
 
     static func workspaceIDs(in text: String) -> [String] {

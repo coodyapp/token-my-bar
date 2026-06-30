@@ -35,4 +35,23 @@ enum Keychain {
         guard let data = genericPassword(service: service, account: account) else { return nil }
         return String(data: data, encoding: .utf8)
     }
+
+    /// Returns the data for *every* generic-password item matching `service`,
+    /// so callers can deterministically pick the right one rather than relying
+    /// on `kSecMatchLimitOne` returning an arbitrary match when several exist.
+    static func genericPasswords(service: String) -> [Data] {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitAll,
+        ]
+
+        var item: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        guard status == errSecSuccess else { return [] }
+        if let array = item as? [Data] { return array }
+        if let single = item as? Data { return [single] }
+        return []
+    }
 }

@@ -352,14 +352,14 @@ extension LocalJSONLUsage {
                 key: "session",
                 title: "Session",
                 subtitle: "Last 5h local tokens",
-                value: Self.formatCount(sessionTokens),
+                value: Format.count(sessionTokens),
                 unit: .tokens
             ),
             UsageRow(
                 key: "weekly",
                 title: "Weekly",
                 subtitle: "Last 7d local tokens",
-                value: Self.formatCount(weeklyTokens),
+                value: Format.count(weeklyTokens),
                 unit: .tokens
             ),
         ]
@@ -369,7 +369,7 @@ extension LocalJSONLUsage {
                 key: "sonnet",
                 title: "Sonnet only",
                 subtitle: "Local Sonnet model tokens",
-                value: Self.formatCount(sonnetTokens),
+                value: Format.count(sonnetTokens),
                 unit: .tokens
             ))
         }
@@ -378,16 +378,10 @@ extension LocalJSONLUsage {
             key: "cache-reasoning",
             title: "Cache + reasoning",
             subtitle: "Shown separately from headline usage",
-            value: Self.formatCount(cacheReadTokens + cacheWriteTokens + reasoningTokens),
+            value: Format.count(cacheReadTokens + cacheWriteTokens + reasoningTokens),
             unit: .tokens
         ))
 
         return rows
-    }
-
-    private static func formatCount(_ value: Int) -> String {
-        if value >= 1_000_000 { return "\(value / 1_000_000)M" }
-        if value >= 1_000 { return "\(value / 1_000)K" }
-        return "\(value)"
     }
 }
