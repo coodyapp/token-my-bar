@@ -104,8 +104,8 @@ public struct LocalJSONLUsageProvider: ProviderClient {
         }
     }
 
-    public func scanUsage() throws -> LocalJSONLUsage {
-        let files = try discoverJSONLFiles()
+    public func scanUsage(now: Date = Date()) throws -> LocalJSONLUsage {
+        let files = try discoverJSONLFiles(now: now)
         guard !files.isEmpty else { throw CocoaError(.fileNoSuchFile) }
 
         var totals = MutableUsageTotals()
@@ -135,7 +135,11 @@ public struct LocalJSONLUsageProvider: ProviderClient {
         )
     }
 
-    private func discoverJSONLFiles() throws -> [URL] {
+    /// Discovers `.jsonl` files under `roots`, always including every file
+    /// modified within the 7-day weekly window (so the weekly total is never
+    /// silently truncated by `maxFiles`) and capping only files older than
+    /// that window, which can no longer affect session or weekly totals.
+    private func discoverJSONLFiles(now: Date = Date()) throws -> [URL] {
         var files: [(url: URL, modified: Date)] = []
         let keys: Set<URLResourceKey> = [.isRegularFileKey, .contentModificationDateKey, .fileSizeKey]
 
@@ -169,10 +173,12 @@ public struct LocalJSONLUsageProvider: ProviderClient {
             return seen.insert(path).inserted
         }
 
-        return deduped
-            .sorted { $0.modified > $1.modified }
-            .prefix(maxFiles)
-            .map(\.url)
+        let weeklyCutoff = now.addingTimeInterval(-7 * 24 * 60 * 60)
+        let recent = deduped.filter { $0.modified >= weeklyCutoff }.sorted { $0.modified > $1.modified }
+        let older = deduped.filter { $0.modified < weeklyCutoff }.sorted { $0.modified > $1.modified }
+        let olderBudget = max(0, maxFiles - recent.count)
+
+        return (recent + older.prefix(olderBudget)).map(\.url)
     }
 
     private func scanFile(_ file: URL, totals: inout MutableUsageTotals, seenIDs: inout Set<String>) throws {

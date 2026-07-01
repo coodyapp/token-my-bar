@@ -116,6 +116,8 @@ Current mechanism:
 - shared `UsageRefresher` returns fresh cache within TTL before hitting APIs
 - non-blocking cross-process refresh lock prevents multi-instance API stampedes
 - last-good cache merge for stale/error states
+- uniform per-refresh provider timeout (`UsageRefresher.providerTimeout`, default 20s)
+- bounded automatic retry (1 retry) on transient HTTP/network failures (408/429/5xx) via `RemoteJSON.fetchData`
 
 Menu bar app shell:
 
@@ -128,7 +130,7 @@ Menu bar app shell:
 
 Planned mechanism:
 
-- provider-specific timeouts and retry/backoff for auth, rate-limit, and transient network failures
+- per-provider tuned timeout and backoff policies (today's timeout and retry are uniform across all vendors)
 - bounded provider-path watchers only where cheap and safe
 
 No broad filesystem watching.

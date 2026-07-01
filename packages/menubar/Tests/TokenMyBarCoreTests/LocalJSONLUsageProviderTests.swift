@@ -31,6 +31,24 @@ import Testing
     #expect(usage.sampleCount == 2)
 }
 
+@Test func localJSONLScannerNeverTruncatesFilesWithinWeeklyWindow() throws {
+    let directory = try makeJSONLDirectory()
+    // All five files are recent (default mtime = now), so they all fall
+    // inside the 7-day weekly window. A cap of 3 must not drop any of them —
+    // only files older than the weekly window may be capped.
+    for index in 0..<5 {
+        let file = directory.appendingPathComponent("session-\(index).jsonl")
+        let line = #"{"uuid":"u\#(index)","message":{"id":"m\#(index)","usage":{"input_tokens":10}}}"#
+        try line.write(to: file, atomically: true, encoding: .utf8)
+    }
+    let provider = LocalJSONLUsageProvider(providerID: .codex, roots: [directory], authSummary: "test", maxFiles: 3)
+
+    let usage = try provider.scanUsage()
+
+    #expect(usage.sampleCount == 5)
+    #expect(usage.weeklyTokens == 50)
+}
+
 @Test func localJSONLSnapshotReportsMissingLogs() async {
     let provider = LocalJSONLUsageProvider(
         providerID: .codex,
@@ -45,10 +63,15 @@ import Testing
 }
 
 private func makeJSONLRoot(lines: [String]) throws -> URL {
+    let directory = try makeJSONLDirectory()
+    let file = directory.appendingPathComponent("session.jsonl")
+    try lines.joined(separator: "\n").write(to: file, atomically: true, encoding: .utf8)
+    return directory
+}
+
+private func makeJSONLDirectory() throws -> URL {
     let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent(UUID().uuidString, isDirectory: true)
     try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    let file = directory.appendingPathComponent("session.jsonl")
-    try lines.joined(separator: "\n").write(to: file, atomically: true, encoding: .utf8)
     return directory
 }

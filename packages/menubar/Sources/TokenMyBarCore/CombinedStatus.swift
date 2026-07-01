@@ -11,17 +11,22 @@ public struct CombinedStatus: Equatable, Sendable {
 }
 
 public enum CombinedStatusFormatter {
+    /// Filters to vendors with a usable (ok/stale) snapshot and, when a primary
+    /// vendor is configured and present, moves it to the front. Shared by the
+    /// CLI's combined status and the menu bar title so both follow one
+    /// resolution order instead of two hand-kept copies.
+    public static func orderedUsableSnapshots(_ snapshots: [ProviderSnapshot], primary: ProviderID?) -> [ProviderSnapshot] {
+        let usable = snapshots.filter { $0.status == .ok || $0.status == .stale }
+        guard let primary, let primarySnapshot = usable.first(where: { $0.providerID == primary }) else {
+            return usable
+        }
+        return [primarySnapshot] + usable.filter { $0.providerID != primary }
+    }
+
     /// Builds the menu bar title from active vendors with official percentages.
     /// Falls back to `--` when no vendor exposes an official percentage.
     public static func format(_ snapshots: [ProviderSnapshot], primary: ProviderID? = nil) -> CombinedStatus {
-        let usable = snapshots.filter { $0.status == .ok || $0.status == .stale }
-
-        let ordered: [ProviderSnapshot]
-        if let primary, let primarySnapshot = usable.first(where: { $0.providerID == primary }) {
-            ordered = [primarySnapshot] + usable.filter { $0.providerID != primary }
-        } else {
-            ordered = usable
-        }
+        let ordered = orderedUsableSnapshots(snapshots, primary: primary)
         let displayed = ordered.compactMap { snapshot -> (ProviderSnapshot, String)? in
             guard let percent = snapshot.usagePercent else { return nil }
             return (snapshot, title(for: percent))

@@ -308,15 +308,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func statusSegments() -> [(providerID: ProviderID, percent: Double, title: String)] {
-        let usable = snapshots.filter { $0.status == .ok || $0.status == .stale }
-        let ordered: [ProviderSnapshot]
-        if settings.showProviderOrder,
-           let primary = config.primaryVendor,
-           let primarySnapshot = usable.first(where: { $0.providerID == primary }) {
-            ordered = [primarySnapshot] + usable.filter { $0.providerID != primary }
-        } else {
-            ordered = usable
-        }
+        let ordered = CombinedStatusFormatter.orderedUsableSnapshots(
+            snapshots,
+            primary: settings.showProviderOrder ? config.primaryVendor : nil
+        )
 
         return ordered.compactMap { snapshot in
             guard let percent = snapshot.usagePercent else { return nil }

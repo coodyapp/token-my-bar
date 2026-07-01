@@ -5,8 +5,8 @@ import Testing
 
 @Test func openCodeLocalUsageReadsTokenTotals() throws {
     let databaseURL = try makeOpenCodeDatabase(rows: [
-        (input: 100, output: 50, reasoning: 25, cacheRead: 10, cacheWrite: 5),
-        (input: 200, output: 75, reasoning: 0, cacheRead: 20, cacheWrite: 10),
+        (input: 100, output: 50, reasoning: 25, cacheRead: 10, cacheWrite: 5, secondsAgo: 0),
+        (input: 200, output: 75, reasoning: 0, cacheRead: 20, cacheWrite: 10, secondsAgo: 0),
     ])
 
     let provider = OpenCodeLocalUsageProvider(databaseURL: databaseURL)
@@ -23,7 +23,7 @@ import Testing
 
 @Test func openCodeSnapshotUsesMediumConfidenceWhenTokensExist() async throws {
     let databaseURL = try makeOpenCodeDatabase(rows: [
-        (input: 100, output: 50, reasoning: 0, cacheRead: 0, cacheWrite: 0),
+        (input: 100, output: 50, reasoning: 0, cacheRead: 0, cacheWrite: 0, secondsAgo: 0),
     ])
 
     let provider = OpenCodeLocalUsageProvider(databaseURL: databaseURL)
@@ -38,6 +38,26 @@ import Testing
     #expect(snapshot.usageRows.first?.title == "Session")
 }
 
+@Test func openCodeLocalUsageAppliesSessionAndWeeklyCutoffsIndependently() throws {
+    let hour = 3_600.0
+    let day = 24 * hour
+    let databaseURL = try makeOpenCodeDatabase(rows: [
+        // Inside both the 5h session window and the 7d weekly window.
+        (input: 100, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0, secondsAgo: 1 * hour),
+        // Outside the session window, still inside the weekly window.
+        (input: 200, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0, secondsAgo: 6 * hour),
+        // Outside both windows, but must still count toward the unconditional total.
+        (input: 400, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0, secondsAgo: 8 * day),
+    ])
+
+    let provider = OpenCodeLocalUsageProvider(databaseURL: databaseURL)
+    let usage = try provider.readUsage()
+
+    #expect(usage.sessionTokens == 100)
+    #expect(usage.weeklyTokens == 300)
+    #expect(usage.tokensInput == 700)
+}
+
 @Test func openCodeSnapshotReportsMissingDatabase() async {
     let provider = OpenCodeLocalUsageProvider(
         databaseURL: URL(fileURLWithPath: "/tmp/token-my-bar-missing-opencode.db")
@@ -50,7 +70,7 @@ import Testing
 }
 
 private func makeOpenCodeDatabase(
-    rows: [(input: Int, output: Int, reasoning: Int, cacheRead: Int, cacheWrite: Int)]
+    rows: [(input: Int, output: Int, reasoning: Int, cacheRead: Int, cacheWrite: Int, secondsAgo: Double)]
 ) throws -> URL {
     let directory = FileManager.default.temporaryDirectory
         .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -97,7 +117,7 @@ private func makeOpenCodeDatabase(
                 \(row.reasoning),
                 \(row.cacheRead),
                 \(row.cacheWrite),
-                \(Int64(Date().timeIntervalSince1970 * 1000))
+                \(Int64((Date().timeIntervalSince1970 - row.secondsAgo) * 1000))
             );
             """
         )
