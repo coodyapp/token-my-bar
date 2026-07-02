@@ -13,7 +13,13 @@ export function SiteFooter() {
           Powered by
         </p>
         <span className="opacity-90 transition-opacity duration-300 group-hover:opacity-100">
-          <img src={coodyLogo} alt="Coody" className="h-9 w-auto" />
+          <img
+            src={coodyLogo}
+            alt="Coody"
+            width={865}
+            height={289}
+            className="h-9 w-auto"
+          />
         </span>
       </a>
     </footer>

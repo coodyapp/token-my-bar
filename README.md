@@ -1,8 +1,6 @@
 # TokenMyBar
 
-TokenMyBar does one thing perfectly: it turns your live AI token usage into a single, glanceable application right in your Mac's menu bar.
-
-It is a native macOS menu bar app for OpenCode, OpenAI Codex, and Claude Code usage. The menu bar can show each vendor as a native icon plus percentage, percentage-only, icons-only, or a single summary value.
+TokenMyBar is a native macOS menu bar app that gives you real-time insight into token usage, reset windows, and plan limits across Claude Code, OpenAI Codex, and OpenCode. Built with a privacy-first approach, it runs with zero telemetry.
 
 ## What You See
 

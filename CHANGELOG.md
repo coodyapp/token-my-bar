@@ -6,6 +6,37 @@ All notable changes to TokenMyBar are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-07-02
+
+### Added
+
+- Website: favicon, canonical URL, and Open Graph/Twitter social preview
+  meta tags — the site previously had none of the three.
+- Website: `vitest` + Testing Library smoke tests for `Hero` and
+  `MenubarPreview`, replacing the `test` script's former no-op (it only
+  re-ran the TypeScript check, now moved to a separate `typecheck` script).
+
+### Changed
+
+- Website + README: refreshed copy to lead with real-time usage/reset/plan
+  insight and call out the app's zero-telemetry, privacy-first design.
+
+### Fixed
+
+- Website: removed the light/dark theme toggle — the page's design is
+  hardcoded dark-only, so switching theme flipped text colors without
+  changing backgrounds, leaving unreadable dark-on-dark text. Also fixed
+  a mobile bug where the hero heading's `line-height: 0` caused wrapped
+  text to overlap.
+- Website: added explicit width/height on the footer logo `<img>` to stop
+  it causing layout shift while loading.
+- Website: added `eslint-plugin-jsx-a11y` to the lint config.
+
+### Removed
+
+- Website: unused `chart-*`/`sidebar-*` CSS custom properties left over
+  from the shadcn theme scaffold — never referenced by any component.
+
 ## [1.0.1] - 2026-07-02
 
 ### Changed

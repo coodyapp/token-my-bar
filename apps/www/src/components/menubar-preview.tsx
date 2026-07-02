@@ -421,7 +421,7 @@ export function MenubarPreview() {
         ))}
       </div>
       <figcaption className="mt-4 text-center font-mono text-xs text-[rgba(235,235,245,0.45)]">
-        Live numbers from your own sessions — nothing leaves your Mac.
+        Built with a privacy-first approach, it runs with zero telemetry.
       </figcaption>
     </figure>
   )
