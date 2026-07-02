@@ -30,12 +30,13 @@ public struct CodexOAuthUsageProvider: ProviderClient {
         let rateLimit = RemoteJSON.findObject(in: object, keys: ["rate_limit", "rateLimit"])
         let primary = RemoteJSON.findObject(in: rateLimit ?? object, keys: ["primary_window", "primaryWindow", "five_hour", "fiveHour"])
         let weekly = RemoteJSON.findObject(in: rateLimit ?? object, keys: ["secondary_window", "secondaryWindow", "weekly", "seven_day", "sevenDay"])
-        // ChatGPT reports percent *remaining*; invert to *used* so Codex counts
-        // up 0→100 and colors its bar like the other vendors (33% left → 67%).
-        let percent = RemoteJSON.percent(in: primary ?? object, remaining: true)
+        // wham/usage reports used_percent, already percent *used* (verified
+        // against the live payload — the dashboard's "99% remaining" is its
+        // own inversion of used_percent: 1).
+        let percent = RemoteJSON.percent(in: primary ?? object)
         var rows = [UsageRow]()
-        if let primary { rows.append(RemoteJSON.row(key: "session", title: "Session", iconName: "timer", object: primary, remaining: true)) }
-        if let weekly { rows.append(RemoteJSON.row(key: "weekly", title: "Weekly", iconName: "calendar", object: weekly, remaining: true)) }
+        if let primary { rows.append(RemoteJSON.row(key: "session", title: "Session", iconName: "timer", object: primary)) }
+        if let weekly { rows.append(RemoteJSON.row(key: "weekly", title: "Weekly", iconName: "calendar", object: weekly)) }
 
         return ProviderSnapshot(
             providerID: .codex,

@@ -14,6 +14,7 @@ private func snapshot(
     percent: Double? = nil,
     used: Int? = nil,
     source: UsageSource = .oauth,
+    plan: String? = nil,
     rows: [UsageRow] = []
 ) -> ProviderSnapshot {
     ProviderSnapshot(
@@ -25,6 +26,7 @@ private func snapshot(
         sources: [source],
         confidence: .high,
         isEstimated: false,
+        planName: plan,
         usageRows: rows
     )
 }
@@ -71,6 +73,47 @@ private func snapshot(
     let result = await provider.snapshot()
     #expect(result.status == .ok)
     #expect(result.primarySource == .localFile)
+}
+
+@Test func fallbackPrefersFreshLocalUsageOverStaleOfficial() async {
+    let official = snapshot(.codex, status: .error, percent: 80, used: 8_000)
+    let rows = [UsageRow(key: "session", title: "Session", value: "12K")]
+    let local = snapshot(.codex, status: .ok, percent: 60, used: 12_000, source: .localLog, rows: rows)
+    let provider = FallbackProvider(
+        primary: StubProvider(providerID: .codex, result: official),
+        fallback: StubProvider(providerID: .codex, result: local)
+    )
+
+    let result = await provider.snapshot()
+    #expect(result.usedTokens == 12_000)
+    #expect(result.usagePercent == 60)
+}
+
+@Test func fallbackKeepsOfficialUsageWhenLocalHasNone() async {
+    let official = snapshot(.codex, status: .error, percent: 80, used: 8_000)
+    let rows = [UsageRow(key: "session", title: "Session", value: "?")]
+    let local = snapshot(.codex, status: .ok, source: .localLog, rows: rows)
+    let provider = FallbackProvider(
+        primary: StubProvider(providerID: .codex, result: official),
+        fallback: StubProvider(providerID: .codex, result: local)
+    )
+
+    let result = await provider.snapshot()
+    #expect(result.usedTokens == 8_000)
+    #expect(result.usagePercent == 80)
+}
+
+@Test func fallbackForwardsPlanName() async {
+    let official = snapshot(.claudeCode, status: .error, plan: "Pro")
+    let rows = [UsageRow(key: "session", title: "Session", value: "1K")]
+    let local = snapshot(.claudeCode, status: .ok, used: 1_000, source: .localLog, rows: rows)
+    let provider = FallbackProvider(
+        primary: StubProvider(providerID: .claudeCode, result: official),
+        fallback: StubProvider(providerID: .claudeCode, result: local)
+    )
+
+    let result = await provider.snapshot()
+    #expect(result.planName == "Pro")
 }
 
 @Test func fallbackReturnsOfficialWhenLocalEmpty() async {

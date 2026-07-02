@@ -95,7 +95,7 @@ public actor SnapshotStore {
 
 /// Thin wrapper over POSIX `flock` advisory locks.
 final class FileLock {
-    private let descriptor: Int32
+    private var descriptor: Int32
 
     init?(url: URL, exclusive: Bool, blocking: Bool) {
         let fd = open(url.path, O_CREAT | O_RDWR, 0o600)
@@ -110,11 +110,13 @@ final class FileLock {
     }
 
     func unlock() {
+        guard descriptor >= 0 else { return }
         flock(descriptor, LOCK_UN)
         close(descriptor)
+        descriptor = -1
     }
 
-    deinit { close(descriptor) }
+    deinit { unlock() }
 }
 
 extension JSONEncoder {

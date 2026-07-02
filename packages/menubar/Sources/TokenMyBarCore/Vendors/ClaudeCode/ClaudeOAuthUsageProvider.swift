@@ -7,12 +7,12 @@ public struct ClaudeOAuthUsageProvider: ProviderClient {
 
     public func snapshot() async -> ProviderSnapshot {
         do {
-            let token = try Self.accessToken()
+            let credentials = try Self.storedCredentials()
             var request = RemoteJSON.request(url: "https://api.anthropic.com/api/oauth/usage")
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            request.setValue("Bearer \(credentials.token)", forHTTPHeaderField: "Authorization")
             request.setValue("oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
             request.setValue("TokenMyBar/0.1 claude-code/unknown", forHTTPHeaderField: "User-Agent")
-            return try await Self.snapshot(from: RemoteJSON.fetchObject(request))
+            return try await Self.snapshot(from: RemoteJSON.fetchObject(request), fallbackPlanName: credentials.planName)
         } catch {
             return .failure(
                 error,
@@ -25,7 +25,17 @@ public struct ClaudeOAuthUsageProvider: ProviderClient {
         }
     }
 
-    static func snapshot(from object: [String: Any]) -> ProviderSnapshot {
+    /// Extracts the plan badge ("Pro", "Max", "Team", …) from the stored
+    /// credential payload; the usage API response itself carries no plan field.
+    static func planFromKeychainPayload(_ object: Any) -> String? {
+        guard let root = object as? [String: Any] else { return nil }
+        let oauth = root["claudeAiOauth"] as? [String: Any] ?? root
+        return RemoteJSON.planName(in: oauth, keys: [
+            "subscriptionType", "subscription_type", "rateLimitTier", "rate_limit_tier",
+        ])
+    }
+
+    static func snapshot(from object: [String: Any], fallbackPlanName: String? = nil) -> ProviderSnapshot {
         let session = RemoteJSON.findObject(in: object, keys: ["five_hour", "fiveHour"])
         let weekly = RemoteJSON.findObject(in: object, keys: ["seven_day", "sevenDay"])
         let sonnet = RemoteJSON.findObject(in: object, keys: ["seven_day_sonnet", "sevenDaySonnet"])
@@ -54,7 +64,7 @@ public struct ClaudeOAuthUsageProvider: ProviderClient {
             isEstimated: false,
             message: rows.isEmpty ? "OAuth usage returned no windows" : nil,
             authSummary: "Claude OAuth",
-            planName: RemoteJSON.planName(in: object, keys: ["subscriptionType", "subscription_type", "rate_limit_tier", "rateLimitTier", "plan"]),
+            planName: RemoteJSON.planName(in: object, keys: ["subscriptionType", "subscription_type", "rate_limit_tier", "rateLimitTier", "plan"]) ?? fallbackPlanName,
             usageRows: rows
         )
     }
@@ -94,7 +104,12 @@ public struct ClaudeOAuthUsageProvider: ProviderClient {
         return nil
     }
 
-    /// Resolves the Claude OAuth access token.
+    struct StoredCredentials {
+        let token: String
+        let planName: String?
+    }
+
+    /// Resolves the Claude OAuth access token and plan from stored credentials.
     ///
     /// Order:
     /// 1. `~/.claude/.credentials.json` file (Linux / older CLI installs).
@@ -102,12 +117,12 @@ public struct ClaudeOAuthUsageProvider: ProviderClient {
     ///    where the token lives under `claudeAiOauth.accessToken`.
     ///
     /// Reading the Keychain item is an explicit, OS-prompted user action.
-    static func accessToken() throws -> String {
+    static func storedCredentials() throws -> StoredCredentials {
         let file = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude/.credentials.json")
         if let data = try? Data(contentsOf: file),
            let object = try? JSONSerialization.jsonObject(with: data),
            let token = RemoteJSON.findString(in: object, keys: ["access_token", "accessToken"]) {
-            return token
+            return StoredCredentials(token: token, planName: planFromKeychainPayload(object))
         }
 
         // Scan every matching Keychain item and pick the first that actually
@@ -116,7 +131,7 @@ public struct ClaudeOAuthUsageProvider: ProviderClient {
         for data in Keychain.genericPasswords(service: "Claude Code-credentials") {
             if let object = try? JSONSerialization.jsonObject(with: data),
                let token = tokenFromKeychainPayload(object) {
-                return token
+                return StoredCredentials(token: token, planName: planFromKeychainPayload(object))
             }
         }
 

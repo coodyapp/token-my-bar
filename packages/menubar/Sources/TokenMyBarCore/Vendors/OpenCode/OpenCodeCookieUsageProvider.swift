@@ -59,7 +59,9 @@ public struct OpenCodeCookieUsageProvider: ProviderClient {
             isEstimated: false,
             message: rows.isEmpty ? "Cookie usage returned no windows" : nil,
             authSummary: "OpenCode cookie",
-            planName: RemoteJSON.planName(in: object, keys: ["plan", "tier", "subscription"]),
+            // Usage always comes from the Go workspace page, so default the
+            // badge to "Go" when the page carries no explicit plan field.
+            planName: RemoteJSON.planName(in: object, keys: ["plan", "tier", "subscription"]) ?? (rows.isEmpty ? nil : "Go"),
             usageRows: rows
         )
     }

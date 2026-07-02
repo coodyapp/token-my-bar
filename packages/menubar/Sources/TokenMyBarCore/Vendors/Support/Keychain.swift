@@ -39,19 +39,29 @@ enum Keychain {
     /// Returns the data for *every* generic-password item matching `service`,
     /// so callers can deterministically pick the right one rather than relying
     /// on `kSecMatchLimitOne` returning an arbitrary match when several exist.
+    ///
+    /// `SecItemCopyMatching` rejects `kSecMatchLimitAll` combined with
+    /// `kSecReturnData` (errSecParam), so this enumerates item attributes
+    /// first and then fetches each item's secret individually — which also
+    /// lets the OS show its consent prompt per item.
     static func genericPasswords(service: String) -> [Data] {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecReturnData as String: true,
+            kSecReturnAttributes as String: true,
             kSecMatchLimit as String: kSecMatchLimitAll,
         ]
 
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
-        guard status == errSecSuccess else { return [] }
-        if let array = item as? [Data] { return array }
-        if let single = item as? Data { return [single] }
-        return []
+        guard status == errSecSuccess, let attributes = item as? [[String: Any]] else {
+            // Attribute enumeration unavailable — fall back to the single-item
+            // path so one readable credential still works.
+            return genericPassword(service: service).map { [$0] } ?? []
+        }
+
+        return attributes.compactMap { attribute in
+            genericPassword(service: service, account: attribute[kSecAttrAccount as String] as? String)
+        }
     }
 }

@@ -63,30 +63,36 @@ enum RemoteJSON {
         return nil
     }
 
-    /// Returns a usage percentage normalized to the 0...100 range.
+    /// Returns a usage percentage clamped to the 0...100 range.
     ///
-    /// Providers report percentages as either 0...100 (Claude `utilization`,
-    /// OpenCode `usagePercent`) or as a 0...1 fraction. Values in 0...1 are
-    /// treated as fractions and scaled, everything else is clamped into 0...100.
-    ///
-    /// Some providers (Codex) report percent **remaining** rather than used.
-    /// Pass `remaining: true` to invert into the used percentage the UI expects,
-    /// so every vendor counts up 0→100 with matching bar colors.
-    static func percent(in object: [String: Any], remaining: Bool = false) -> Double? {
+    /// Every provider reports percent *used* on a 0...100 scale (Codex
+    /// `used_percent`, Claude `utilization`, OpenCode `usagePercent`) —
+    /// verified against live payloads. Small values pass through unscaled:
+    /// Codex sends `used_percent: 1` meaning 1%, so a 0...1 "fraction"
+    /// heuristic would misread it as 100%.
+    static func percent(in object: [String: Any]) -> Double? {
         guard let raw = double(object, keys: [
             "usagePercent", "usage_percent", "percent", "percentUsed",
             "used_percent", "utilization", "usedPercent",
         ]) else { return nil }
-        let used = normalizePercent(raw)
-        return remaining ? 100 - used : used
+        return normalizePercent(raw)
     }
 
     static func normalizePercent(_ raw: Double) -> Double {
-        let scaled = raw > 0 && raw <= 1 ? raw * 100 : raw
-        return min(max(scaled, 0), 100)
+        min(max(raw, 0), 100)
     }
 
     static func resetDate(in object: [String: Any], now: Date = Date()) -> Date? {
+        // Absolute timestamps win over countdown fields: Codex sends both, and
+        // its reset_after_seconds is the static window length (always 5h/7d),
+        // not the time actually left.
+        if let timestamp = double(object, keys: ["resetAt", "reset_at", "resetsAt", "resets_at"]) {
+            return Date(timeIntervalSince1970: timestamp > 10_000_000_000 ? timestamp / 1000 : timestamp)
+        }
+        if let iso = string(object, keys: ["resetAt", "reset_at", "resetsAt", "resets_at", "renewAt"]),
+           let date = parseISO8601(iso) {
+            return date
+        }
         if let seconds = double(object, keys: [
             "resetInSec", "resetInSeconds", "reset_in_sec", "resetSeconds",
             "resetsInSec", "resetsInSeconds", "reset_sec", "secondsUntilReset",
@@ -94,13 +100,6 @@ enum RemoteJSON {
             "resetIn", "resetSec",
         ]) {
             return now.addingTimeInterval(seconds)
-        }
-        if let timestamp = double(object, keys: ["resetAt", "reset_at", "resetsAt", "resets_at"]) {
-            return Date(timeIntervalSince1970: timestamp > 10_000_000_000 ? timestamp / 1000 : timestamp)
-        }
-        if let iso = string(object, keys: ["resetAt", "reset_at", "resetsAt", "resets_at", "renewAt"]),
-           let date = parseISO8601(iso) {
-            return date
         }
         return nil
     }
@@ -124,8 +123,8 @@ enum RemoteJSON {
         return "Resets in \(minutes)m"
     }
 
-    static func row(key: String, title: String, iconName: String? = nil, object: [String: Any], now: Date = Date(), idleDetail: String? = nil, remaining: Bool = false) -> UsageRow {
-        let percent = percent(in: object, remaining: remaining) ?? 0
+    static func row(key: String, title: String, iconName: String? = nil, object: [String: Any], now: Date = Date(), idleDetail: String? = nil) -> UsageRow {
+        let percent = percent(in: object) ?? 0
         let resetSub = resetSubtitle(in: object, now: now)
         return UsageRow(
             key: key,

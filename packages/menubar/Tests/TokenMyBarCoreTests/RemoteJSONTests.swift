@@ -2,9 +2,11 @@ import Foundation
 import Testing
 @testable import TokenMyBarCore
 
-@Test func normalizePercentScalesFractionsAndClamps() {
-    #expect(RemoteJSON.normalizePercent(0.46) == 46)
-    #expect(RemoteJSON.normalizePercent(1.0) == 100)
+@Test func normalizePercentClampsWithoutFractionScaling() {
+    // Every vendor reports 0...100 (Codex used_percent: 1 means 1%, not 100%),
+    // so small values must pass through unscaled.
+    #expect(RemoteJSON.normalizePercent(0.46) == 0.46)
+    #expect(RemoteJSON.normalizePercent(1.0) == 1)
     #expect(RemoteJSON.normalizePercent(42) == 42)
     #expect(RemoteJSON.normalizePercent(180) == 100)
     #expect(RemoteJSON.normalizePercent(-5) == 0)
@@ -31,6 +33,17 @@ import Testing
     #expect(RemoteJSON.resetDate(in: ["nope": 1]) == nil)
 }
 
+@Test func resetDatePrefersAbsoluteTimestampOverWindowSeconds() {
+    // Codex sends both; reset_after_seconds is the static window length while
+    // reset_at is the actual reset moment.
+    let now = Date(timeIntervalSince1970: 1_000_000)
+    let date = RemoteJSON.resetDate(
+        in: ["reset_after_seconds": 604_800, "reset_at": 1_783_562_510],
+        now: now
+    )
+    #expect(date == Date(timeIntervalSince1970: 1_783_562_510))
+}
+
 @Test func resetSubtitleFormatsDaysHoursMinutes() {
     let now = Date(timeIntervalSince1970: 0)
     #expect(RemoteJSON.resetSubtitle(in: ["resetInSec": 4320], now: now) == "Resets in 1h 12m")
@@ -44,6 +57,6 @@ import Testing
     #expect(RemoteJSON.percent(in: ["used_percent": 18]) == 18)
     #expect(RemoteJSON.percent(in: ["utilization": 47.0]) == 47)
     #expect(RemoteJSON.percent(in: ["usagePercent": "8"]) == 8)
-    #expect(RemoteJSON.percent(in: ["percent": 0.39]) == 39)
+    #expect(RemoteJSON.percent(in: ["percent": 0.39]) == 0.39)
     #expect(RemoteJSON.percent(in: ["other": 1]) == nil)
 }

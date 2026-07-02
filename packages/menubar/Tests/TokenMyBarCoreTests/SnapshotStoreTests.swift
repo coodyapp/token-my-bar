@@ -96,3 +96,22 @@ private func tempStoreURL() -> URL {
     #expect(await second.tryBeginRefresh())
     await second.endRefresh()
 }
+
+@Test func fileLockDeinitAfterUnlockDoesNotCloseReusedDescriptor() throws {
+    let dir = tempStoreURL().deletingLastPathComponent()
+    defer { try? FileManager.default.removeItem(at: dir) }
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+
+    var lock = FileLock(url: dir.appendingPathComponent("test.lock"), exclusive: true, blocking: false)
+    #expect(lock != nil)
+    lock?.unlock()
+
+    // POSIX hands out the lowest free descriptor, so this open() reuses the
+    // number unlock() just closed. If deinit closes it again, probe dies.
+    let probe = open(dir.appendingPathComponent("probe").path, O_CREAT | O_RDWR, 0o600)
+    #expect(probe >= 0)
+    defer { close(probe) }
+
+    lock = nil
+    #expect(fcntl(probe, F_GETFD) != -1, "deinit closed a descriptor it no longer owns")
+}

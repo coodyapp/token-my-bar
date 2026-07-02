@@ -41,10 +41,10 @@ public struct FallbackProvider<Primary: ProviderClient, Fallback: ProviderClient
         return ProviderSnapshot(
             providerID: providerID,
             status: official.status == .unauthenticated ? .unauthenticated : local.status,
-            usedTokens: official.usedTokens ?? local.usedTokens,
+            usedTokens: local.usedTokens ?? official.usedTokens,
             limitTokens: official.limitTokens,
             unit: official.unit,
-            usagePercent: official.usagePercent,
+            usagePercent: local.usagePercent ?? official.usagePercent,
             windowName: official.windowName,
             resetAt: official.resetAt,
             refreshedAt: Date(),
@@ -54,6 +54,7 @@ public struct FallbackProvider<Primary: ProviderClient, Fallback: ProviderClient
             isEstimated: true,
             message: official.message ?? local.message,
             authSummary: "Official source unavailable; showing local history",
+            planName: official.planName ?? local.planName,
             usageRows: local.usageRows
         )
     }

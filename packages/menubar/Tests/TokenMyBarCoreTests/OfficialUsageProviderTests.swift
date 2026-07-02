@@ -1,21 +1,36 @@
+import Foundation
 import Testing
 @testable import TokenMyBarCore
 
 @Test func codexOAuthSnapshotReadsRateLimitWindows() {
-    // ChatGPT reports percent *remaining*; the provider inverts to *used* so
-    // Codex counts up 0→100 like the other vendors (12.4% left → 87.6% used).
+    // Real /backend-api/wham/usage shape (verified 2026-07-01): used_percent
+    // is already percent *used*; reset_after_seconds is the static window
+    // length, reset_at the actual reset moment.
     let snapshot = CodexOAuthUsageProvider.snapshot(from: [
+        "plan_type": "plus",
         "rate_limit": [
-            "primary_window": ["usagePercent": 12.4, "resetInSec": 3600],
-            "secondary_window": ["usagePercent": 3.0, "resetInSec": 86_400],
+            "primary_window": [
+                "used_percent": 1,
+                "limit_window_seconds": 18_000,
+                "reset_after_seconds": 18_000,
+                "reset_at": 1_782_975_710,
+            ],
+            "secondary_window": [
+                "used_percent": 0,
+                "limit_window_seconds": 604_800,
+                "reset_after_seconds": 604_800,
+                "reset_at": 1_783_562_510,
+            ],
         ],
     ])
 
     #expect(snapshot.status == .ok)
     #expect(snapshot.primarySource == .oauth)
-    #expect(snapshot.usagePercent == 87.6)
+    #expect(snapshot.usagePercent == 1)
     #expect(snapshot.usageRows.map(\.key) == ["session", "weekly"])
-    #expect(snapshot.usageRows.first?.value == "88%")
+    #expect(snapshot.usageRows.map(\.value) == ["1%", "0%"])
+    #expect(snapshot.planName == "Plus")
+    #expect(snapshot.resetAt == Date(timeIntervalSince1970: 1_782_975_710))
 }
 
 @Test func claudeOAuthSnapshotReadsExpectedWindows() {
@@ -46,6 +61,9 @@ import Testing
     #expect(snapshot.usageRows.map(\.key) == ["rolling", "weekly", "monthly"])
     #expect(snapshot.usageRows.map(\.title) == ["Rolling Usage", "Weekly Usage", "Monthly Usage"])
     #expect(snapshot.usageRows[1].value == "8%")
+    // Usage is always parsed off the Go workspace page, so the plan badge
+    // defaults to "Go" when the page carries no explicit plan field.
+    #expect(snapshot.planName == "Go")
 }
 
 @Test func claudeExtraUsageRowComputesSpendPercent() {
@@ -65,6 +83,24 @@ import Testing
 @Test func claudeExtraUsageIgnoredWhenDisabled() {
     #expect(ClaudeOAuthUsageProvider.extraUsageRow(["is_enabled": false, "monthly_limit": 20_000, "used_credits": 100]) == nil)
     #expect(ClaudeOAuthUsageProvider.extraUsageRow(["monthly_limit": 0]) == nil)
+}
+
+@Test func claudePlanFromKeychainPayloadReadsSubscriptionType() {
+    let payload: [String: Any] = [
+        "claudeAiOauth": ["accessToken": "tok", "subscriptionType": "pro"],
+    ]
+    #expect(ClaudeOAuthUsageProvider.planFromKeychainPayload(payload) == "Pro")
+    #expect(ClaudeOAuthUsageProvider.planFromKeychainPayload(["access_token": "flat"]) == nil)
+}
+
+@Test func claudeSnapshotUsesFallbackPlanWhenResponseHasNone() {
+    // The OAuth usage response carries no plan field; the badge comes from the
+    // stored credential's subscriptionType.
+    let snapshot = ClaudeOAuthUsageProvider.snapshot(
+        from: ["five_hour": ["utilization": 10, "resets_at": "2026-07-02T03:10:00Z"]],
+        fallbackPlanName: "Pro"
+    )
+    #expect(snapshot.planName == "Pro")
 }
 
 @Test func claudeSnapshotUsesUtilizationAndResetsAt() {
