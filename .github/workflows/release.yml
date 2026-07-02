@@ -30,14 +30,21 @@ jobs:
           apps/menubar/Scripts/package.sh "$VERSION"
           shasum -a 256 "apps/menubar/dist/TokenMyBar-$VERSION.dmg" | tee "apps/menubar/dist/TokenMyBar-$VERSION.dmg.sha256"
 
-      - name: Create GitHub release
+      - name: Create or update GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          gh release create "$GITHUB_REF_NAME" \
-            "apps/menubar/dist/TokenMyBar-$VERSION.dmg" \
-            "apps/menubar/dist/TokenMyBar-$VERSION.dmg.sha256" \
-            --title "TokenMyBar $VERSION" \
-            --generate-notes \
-            --notes "See [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md) for details."
+          ASSETS=(
+            "apps/menubar/dist/TokenMyBar-$VERSION.dmg"
+            "apps/menubar/dist/TokenMyBar-$VERSION.dmg.sha256"
+          )
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            # Tag was re-pushed: refresh the assets on the existing release.
+            gh release upload "$GITHUB_REF_NAME" "${ASSETS[@]}" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "${ASSETS[@]}" \
+              --title "TokenMyBar $VERSION" \
+              --generate-notes \
+              --notes "See [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md) for details."
+          fi

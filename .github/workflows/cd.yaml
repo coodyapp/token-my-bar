@@ -33,7 +33,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: npx nx build www
+        run: pnpm build:www
 
       - name: Deploy to Pages
         uses: cloudflare/wrangler-action@v3
