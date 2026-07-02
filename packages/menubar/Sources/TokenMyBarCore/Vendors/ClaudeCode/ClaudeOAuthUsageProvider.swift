@@ -11,7 +11,7 @@ public struct ClaudeOAuthUsageProvider: ProviderClient {
             var request = RemoteJSON.request(url: "https://api.anthropic.com/api/oauth/usage")
             request.setValue("Bearer \(credentials.token)", forHTTPHeaderField: "Authorization")
             request.setValue("oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
-            request.setValue("TokenMyBar/0.1 claude-code/unknown", forHTTPHeaderField: "User-Agent")
+            request.setValue("TokenMyBar/1.0 claude-code/unknown", forHTTPHeaderField: "User-Agent")
             return try await Self.snapshot(from: RemoteJSON.fetchObject(request), fallbackPlanName: credentials.planName)
         } catch {
             return .failure(

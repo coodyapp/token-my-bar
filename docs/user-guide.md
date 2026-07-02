@@ -17,6 +17,12 @@ Open Settings from the popover menu and choose `Display Mode`:
 - `Summary`: one calculated percentage.
 - `Custom`: currently follows icon plus percentage while preserving future custom behavior.
 
+## Plan Badges
+
+Each vendor section shows your subscription plan next to the vendor name when
+it can be determined: Claude Code (e.g. `Pro`, `Max`, `Team`), OpenAI Codex
+(e.g. `Plus`), and OpenCode (`Go`).
+
 ## Vendors
 
 Use `Vendors` to enable or disable:

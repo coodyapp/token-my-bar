@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+
+jobs:
+  release:
+    name: Package & publish
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # package.sh derives the build number from rev-list and the version
+          # from the tag, so it needs full history.
+          fetch-depth: 0
+
+      - name: Test (release configuration)
+        run: swift test -c release --package-path packages/menubar
+
+      - name: Package app + DMG
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          packages/menubar/Scripts/package.sh "$VERSION"
+          shasum -a 256 "packages/menubar/dist/TokenMyBar-$VERSION.dmg" | tee "packages/menubar/dist/TokenMyBar-$VERSION.dmg.sha256"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" \
+            "packages/menubar/dist/TokenMyBar-$VERSION.dmg" \
+            "packages/menubar/dist/TokenMyBar-$VERSION.dmg.sha256" \
+            --title "TokenMyBar $VERSION" \
+            --generate-notes \
+            --notes "See [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md) for details."
