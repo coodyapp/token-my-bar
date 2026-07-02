@@ -1,25 +1,15 @@
-import { Header } from "@/components/site/header";
-import { Hero } from "@/components/site/hero";
-import { Features } from "@/components/site/features";
-import { Install } from "@/components/site/install";
-import { Footer } from "@/components/site/footer";
+import { SiteFooter } from "@/components/footer"
+import { Hero } from "@/components/hero"
 
-export default function App() {
+function App() {
   return (
-    <>
-      <a
-        href="#main"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
-      >
-        Skip to content
-      </a>
-      <Header />
-      <main id="main">
-        <Hero />
-        <Features />
-        <Install />
+    <div className="bg-neutral-950">
+      <Hero />
+      <main className="mx-auto flex max-w-3xl flex-col gap-16 px-6 pt-4">
       </main>
-      <Footer />
-    </>
-  );
+      <SiteFooter />
+    </div>
+  )
 }
+
+export default App

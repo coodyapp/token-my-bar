@@ -1,29 +1,13 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TokenMyBar — AI usage in your Mac menu bar</title>
     <meta
       name="description"
-      content="TokenMyBar is a native macOS menu bar app showing live AI token usage, reset windows, and plan limits for Claude Code, OpenAI Codex, and OpenCode."
+      content="A native macOS menu bar app showing live AI token usage, reset windows, and plan limits for Claude Code, OpenAI Codex, and OpenCode."
     />
-    <meta property="og:title" content="TokenMyBar — AI usage in your Mac menu bar" />
-    <meta
-      property="og:description"
-      content="Live token usage for Claude Code, Codex, and OpenCode. Native, private, open source."
-    />
-    <meta property="og:type" content="website" />
-    <meta name="theme-color" content="#18181b" media="(prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-    <script>
-      // Apply the stored/system theme before first paint to avoid a flash.
-      (function () {
-        var stored = localStorage.getItem("tmb-theme");
-        var dark = stored ? stored === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
-        document.documentElement.classList.toggle("dark", dark);
-      })();
-    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TokenMyBar — AI usage in your Mac menu bar</title>
   </head>
   <body>
     <div id="root"></div>

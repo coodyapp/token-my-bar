@@ -1,49 +1,24 @@
-# v1.0.0 Release Plan
+# Rebuild apps/www from tmp/ template
 
-## Verification
-- [x] Full test suite in release configuration (82/82, `swift test -c release`)
-- [x] www tests + build (tsc clean, vite build OK)
-- [x] `package.sh 1.0.0` → .app + .dmg build succeeds
-- [x] Smoke-test packaged .app (launches, process up)
-- [x] Release viability check (UA bumped to 1.0; version comes from tag)
+Template: tmp/ = SAK single-page Vite+React+Tailwind v4+shadcn site (ASCII logo, install cmd + copy toast, usage block, footer). Recreate apps/www with same structure, TokenMyBar context. Keep MenubarPreview component.
 
-## Docs
-- [x] Re-checked existing docs/ (accurate post-fixes; plan badges added to user-guide)
-- [x] docs/installation.md (DMG + brew + source + first-run Keychain)
-- [x] docs/development.md (layout, provider rules, CI/CD, release process)
-- [x] README refresh (install section, doc links)
-- [x] CHANGELOG.md (1.0.0)
+## Tasks
 
-## CI/CD
-- [x] ci.yml verified — was broken (pnpm 11 needs Node ≥22.13); fixed Node 20→22, now green
-- [x] release.yml: tag → release-config tests → package.sh → GitHub release + DMG + sha256
-
-## Distribution
-- [x] Casks/token-my-bar.rb, sha256 pinned to released DMG (verified by re-download)
-- [x] Wiki: **blocked** — GitHub disallows wikis on private free-plan repos
-      (PATCH has_wiki stays false). Pages staged in `wiki/` with publish
-      instructions for when the repo goes public.
-
-## Ship
-- [x] Commits pushed to main (1f454a2, 020ee2c, eddac3d)
-- [x] Tag v1.0.0 pushed; release workflow succeeded first try
-- [x] Release verified: DMG mounts, bundle version 1.0.0, checksum matches cask
-- [x] CI green on main (Swift + Web)
+- [x] Copy tmp config skeleton: components.json, eslint.config.js, .prettierrc, .prettierignore, .gitignore, tsconfig trio
+- [x] vite.config.ts: version single-source from Casks/token-my-bar.rb → VITE_TMB_VERSION
+- [x] package.json: keep name/scripts contract (CI runs test/build), add sonner, radix-ui, eslint+prettier stack
+- [x] index.html: TokenMyBar title/meta
+- [x] src/index.css, theme-provider, ui/button, ui/sonner, lib/utils from tmp
+- [x] src/App.tsx: TMB ASCII logo, brew install + copy toast, MenubarPreview, supported note, footer
+- [x] src/components/menubar-preview.tsx: keep (moved out of site/), keep ui/badge.tsx
+- [x] Delete old: site/*, theme-toggle, ui/card, vite-env.d.ts, tsconfig.tsbuildinfo
+- [x] pnpm install, run dev server, verify serving (browser extension unavailable — verified via module transforms + bundle grep)
+- [x] tsc build green (pnpm test:www), eslint green, vite build green
 
 ## Review
 
-Shipped v1.0.0: https://github.com/coodyapp/token-my-bar/releases/tag/v1.0.0
-
-Notable decisions:
-- CD builds the canonical DMG (runner build ≠ local build), so the cask sha256
-  is taken from the released asset, not the local package.
-- Releases are unsigned/not notarized until DEVELOPER_ID_APP / AC_* secrets
-  exist; documented Gatekeeper workaround in installation.md and cask caveats.
-- Brew from a private repo needs authenticated git/HOMEBREW_GITHUB_API_TOKEN;
-  documented. Public repo removes the caveat.
-
-Lessons:
-- GitHub wiki is a plan feature: private + free ⇒ has_wiki silently stays false.
-- pnpm 11 requires Node ≥ 22.13 — setup-node must track pnpm's engine floor.
-- Don't exec a menu bar app binary with --help; AppKit apps ignore argv and
-  block forever.
+- apps/www now mirrors tmp/ exactly: same config skeleton, single-file App.tsx page (ASCII logo → tagline → install cmd + copy toast → preview → support note → footer), tmp theme (red oklch primary, Geist, animate-logo).
+- Deviations from tmp: kept MenubarPreview + ui/badge.tsx (user asked to keep menubar app image); version read from Casks/token-my-bar.rb instead of cli bin; TokenMyBar meta/copy.
+- Fix needed: eslint-plugin-react-hooks 6.1.1 exposes `configs.recommended` not `configs.flat.recommended` (tmp's config crashed eslint).
+- CI/CD contract preserved: package name @token-my-bar/www, dev/build/test scripts unchanged; cd.yaml deploys dist/ as before.
+- Verification: pnpm test:www ✅, lint ✅, build:www ✅, dev server :5173 serving all modules 200, bundle contains brew cmd + v1.0.1 + preview strings. Visual check skipped — Chrome extension not connected.
