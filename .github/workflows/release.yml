@@ -22,13 +22,13 @@ jobs:
           fetch-depth: 0
 
       - name: Test (release configuration)
-        run: swift test -c release --package-path packages/menubar
+        run: swift test -c release --package-path apps/menubar
 
       - name: Package app + DMG
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          packages/menubar/Scripts/package.sh "$VERSION"
-          shasum -a 256 "packages/menubar/dist/TokenMyBar-$VERSION.dmg" | tee "packages/menubar/dist/TokenMyBar-$VERSION.dmg.sha256"
+          apps/menubar/Scripts/package.sh "$VERSION"
+          shasum -a 256 "apps/menubar/dist/TokenMyBar-$VERSION.dmg" | tee "apps/menubar/dist/TokenMyBar-$VERSION.dmg.sha256"
 
       - name: Create GitHub release
         env:
@@ -36,8 +36,8 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           gh release create "$GITHUB_REF_NAME" \
-            "packages/menubar/dist/TokenMyBar-$VERSION.dmg" \
-            "packages/menubar/dist/TokenMyBar-$VERSION.dmg.sha256" \
+            "apps/menubar/dist/TokenMyBar-$VERSION.dmg" \
+            "apps/menubar/dist/TokenMyBar-$VERSION.dmg.sha256" \
             --title "TokenMyBar $VERSION" \
             --generate-notes \
             --notes "See [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md) for details."

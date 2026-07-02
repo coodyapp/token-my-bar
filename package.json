@@ -6,9 +6,9 @@
     "dev:www": "pnpm --filter @token-my-bar/www dev",
     "build": "pnpm build:www && pnpm build:menubar",
     "build:www": "pnpm --filter @token-my-bar/www build",
-    "build:menubar": "swift build --package-path packages/menubar",
-    "test": "pnpm --filter @token-my-bar/www test && swift test --package-path packages/menubar",
-    "test:menubar": "swift test --package-path packages/menubar",
+    "build:menubar": "swift build --package-path apps/menubar",
+    "test": "pnpm --filter @token-my-bar/www test && swift test --package-path apps/menubar",
+    "test:menubar": "swift test --package-path apps/menubar",
     "test:www": "pnpm --filter @token-my-bar/www test"
   }
 }

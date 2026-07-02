@@ -4,7 +4,7 @@ This guide walks through adding a new usage vendor to TokenMyBar. Every provider
 maps its source data into a `ProviderSnapshot` and is registered with the
 `ProviderRegistry`. Use an existing vendor such as Codex as your reference.
 
-All paths below are relative to `packages/menubar`.
+All paths below are relative to `apps/menubar`.
 
 ## 1. Add a `ProviderID` case
 
@@ -183,5 +183,5 @@ import Testing
 Run the suite with:
 
 ```bash
-swift test --package-path packages/menubar
+swift test --package-path apps/menubar
 ```

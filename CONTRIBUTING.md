@@ -5,15 +5,15 @@ to build and test, and the conventions we follow.
 
 ## Repository Layout
 
-TokenMyBar is a pnpm monorepo (`pnpm-workspace.yaml` globs `packages/*`):
+TokenMyBar is a pnpm monorepo (`pnpm-workspace.yaml` globs `apps/*`):
 
-- `packages/menubar` — the native macOS menu bar app, shared Swift core, and
+- `apps/menubar` — the native macOS menu bar app, shared Swift core, and
   Swift CLI, built with SwiftPM (`Package.swift`).
   - `Sources/TokenMyBar` — AppKit/SwiftUI menu bar app.
   - `Sources/TokenMyBarCore` — provider models, refresh/cache, and parsers.
   - `Sources/TokenMyBarCLI` — the `token-my-bar` Swift CLI binary.
   - `Tests/TokenMyBarCoreTests` — `swift-testing` unit tests.
-- `packages/www` — the static landing site (React + Vite + Tailwind).
+- `apps/www` — the static landing site (React + Vite + Tailwind).
 - `docs/` — architecture, product spec, provider, and user docs.
 
 ## Prerequisites
@@ -31,7 +31,7 @@ From the repo root:
 ```bash
 pnpm build                                   # builds www + menubar
 pnpm build:www                               # website only
-swift build --package-path packages/menubar  # menubar only
+swift build --package-path apps/menubar  # menubar only
 ```
 
 `pnpm build:menubar` is an alias for the `swift build` command above.
@@ -41,7 +41,7 @@ swift build --package-path packages/menubar  # menubar only
 ```bash
 pnpm test                                     # www + menubar
 pnpm test:www                                 # website only
-swift test --package-path packages/menubar    # menubar only
+swift test --package-path apps/menubar    # menubar only
 ```
 
 `pnpm test:menubar` is an alias for the `swift test` command above.

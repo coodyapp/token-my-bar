@@ -31,8 +31,8 @@ brew install --cask token-my-bar
 ```bash
 git clone https://github.com/coodyapp/token-my-bar.git
 cd token-my-bar
-packages/menubar/Scripts/package.sh
-open packages/menubar/dist/TokenMyBar.app
+apps/menubar/Scripts/package.sh
+open apps/menubar/dist/TokenMyBar.app
 ```
 
 See [development.md](development.md) for the full developer setup.

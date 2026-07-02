@@ -1,0 +1,10 @@
+// Cloudflare Worker serving the static www build (deployed by cd.yml).
+{
+  "name": "coody-tmb-www-prd-01",
+  "account_id": "51a60f4777316c6bfd6b773b58a494e8",
+  "compatibility_date": "2026-07-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}

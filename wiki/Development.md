@@ -1,8 +1,8 @@
 # Development
 
 ```bash
-swift build --package-path packages/menubar
-swift test  --package-path packages/menubar   # 82 tests
+swift build --package-path apps/menubar
+swift test  --package-path apps/menubar   # 82 tests
 pnpm install && pnpm test:www
 ```
 

@@ -24,15 +24,15 @@ See [docs/user-guide.md](docs/user-guide.md) for setup, settings, display modes,
 
 ## Packages
 
-- `packages/menubar`: Swift macOS menu bar app, shared core, and Swift CLI.
-- `packages/www`: React + Vite website.
-- Swift CLI lives in `packages/menubar/Sources/TokenMyBarCLI`.
+- `apps/menubar`: Swift macOS menu bar app, shared core, and Swift CLI.
+- `apps/www`: React + Vite website.
+- Swift CLI lives in `apps/menubar/Sources/TokenMyBarCLI`.
 
 ## Development
 
 ```bash
-swift build --package-path packages/menubar
-swift test --package-path packages/menubar
+swift build --package-path apps/menubar
+swift test --package-path apps/menubar
 pnpm install
 pnpm build:www
 ```

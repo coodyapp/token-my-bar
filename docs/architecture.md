@@ -14,9 +14,9 @@ The app runtime must not depend on Node, npm, pnpm, Vite, or website tooling.
 
 | Package | Role |
 |---|---|
-| `packages/menubar` | Native app, shared Swift core, Swift CLI, tests, release scripts |
-| `packages/www` | Static website using React, Vite, Tailwind, shadcn-style components |
-| Swift CLI | Lives inside `packages/menubar/Sources/TokenMyBarCLI`; no separate package |
+| `apps/menubar` | Native app, shared Swift core, Swift CLI, tests, release scripts |
+| `apps/www` | Static website using React, Vite, Tailwind, shadcn-style components |
+| Swift CLI | Lives inside `apps/menubar/Sources/TokenMyBarCLI`; no separate package |
 
 ## Provider Contract
 

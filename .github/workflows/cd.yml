@@ -1,0 +1,54 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/www/**"
+      - ".github/workflows/cd.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: cd-www
+  cancel-in-progress: true
+
+jobs:
+  deploy-www:
+    name: Deploy www (coody-tmb-www-prd-01)
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Cloudflare token
+        id: token
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::CLOUDFLARE_API_TOKEN secret not set — skipping deploy. Create a token (Workers Scripts: Edit) in the coody account and add it as a repo secret."
+          fi
+
+      - uses: pnpm/action-setup@v4
+        if: steps.token.outputs.present == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.token.outputs.present == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Build
+        if: steps.token.outputs.present == 'true'
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build:www
+
+      - name: Deploy to Cloudflare Workers
+        if: steps.token.outputs.present == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: apps/www
+          command: deploy

@@ -18,9 +18,9 @@ jobs:
       - name: Swift version
         run: swift --version
       - name: Build
-        run: swift build --package-path packages/menubar
+        run: swift build --package-path apps/menubar
       - name: Test
-        run: swift test --package-path packages/menubar
+        run: swift test --package-path apps/menubar
 
   www:
     name: Web (pnpm)

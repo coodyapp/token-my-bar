@@ -8,7 +8,7 @@ importers:
 
   .: {}
 
-  packages/www:
+  apps/www:
     dependencies:
       '@vitejs/plugin-react':
         specifier: 6.0.3

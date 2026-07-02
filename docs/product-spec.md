@@ -20,14 +20,14 @@ It is not a general AI billing dashboard. Official quota windows come from provi
 
 | Path | Role |
 |---|---|
-| `packages/menubar` | SwiftPM package for macOS app, shared core, CLI, tests |
-| `packages/menubar/Sources/TokenMyBar` | AppKit/SwiftUI menu bar app |
-| `packages/menubar/Sources/TokenMyBarCore` | Provider models, refresh/cache, parsers |
-| `packages/menubar/Sources/TokenMyBarCLI` | Swift CLI binary `token-my-bar` |
-| `packages/www` | React/Vite/Tailwind landing page |
+| `apps/menubar` | SwiftPM package for macOS app, shared core, CLI, tests |
+| `apps/menubar/Sources/TokenMyBar` | AppKit/SwiftUI menu bar app |
+| `apps/menubar/Sources/TokenMyBarCore` | Provider models, refresh/cache, parsers |
+| `apps/menubar/Sources/TokenMyBarCLI` | Swift CLI binary `token-my-bar` |
+| `apps/www` | React/Vite/Tailwind landing page |
 | `docs/providers` | TokenMyBar provider specs |
 
-No separate `packages/cli` package exists.
+No separate `apps/cli` package exists.
 
 ## Current CLI
 

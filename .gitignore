@@ -2,16 +2,16 @@ node_modules/
 .DS_Store
 
 # Web
-packages/www/dist/
-packages/www/.vite/
+apps/www/dist/
+apps/www/.vite/
 *.tsbuildinfo
 
 # SwiftPM
-packages/menubar/.build/
-packages/menubar/.swiftpm/
+apps/menubar/.build/
+apps/menubar/.swiftpm/
 
 # Packaging output (.app, .dmg)
-packages/menubar/dist/
+apps/menubar/dist/
 
 # Xcode
 DerivedData/

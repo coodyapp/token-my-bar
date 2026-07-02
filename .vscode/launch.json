@@ -4,41 +4,41 @@
             "type": "swift",
             "request": "launch",
             "args": [],
-            "cwd": "${workspaceFolder:token-my-bar}/packages/menubar",
-            "name": "Debug TokenMyBar (packages/menubar)",
+            "cwd": "${workspaceFolder:token-my-bar}/apps/menubar",
+            "name": "Debug TokenMyBar (apps/menubar)",
             "target": "TokenMyBar",
             "configuration": "debug",
-            "preLaunchTask": "swift: Build Debug TokenMyBar (packages/menubar)"
+            "preLaunchTask": "swift: Build Debug TokenMyBar (apps/menubar)"
         },
         {
             "type": "swift",
             "request": "launch",
             "args": [],
-            "cwd": "${workspaceFolder:token-my-bar}/packages/menubar",
-            "name": "Release TokenMyBar (packages/menubar)",
+            "cwd": "${workspaceFolder:token-my-bar}/apps/menubar",
+            "name": "Release TokenMyBar (apps/menubar)",
             "target": "TokenMyBar",
             "configuration": "release",
-            "preLaunchTask": "swift: Build Release TokenMyBar (packages/menubar)"
+            "preLaunchTask": "swift: Build Release TokenMyBar (apps/menubar)"
         },
         {
             "type": "swift",
             "request": "launch",
             "args": [],
-            "cwd": "${workspaceFolder:token-my-bar}/packages/menubar",
-            "name": "Debug token-my-bar (packages/menubar)",
+            "cwd": "${workspaceFolder:token-my-bar}/apps/menubar",
+            "name": "Debug token-my-bar (apps/menubar)",
             "target": "token-my-bar",
             "configuration": "debug",
-            "preLaunchTask": "swift: Build Debug token-my-bar (packages/menubar)"
+            "preLaunchTask": "swift: Build Debug token-my-bar (apps/menubar)"
         },
         {
             "type": "swift",
             "request": "launch",
             "args": [],
-            "cwd": "${workspaceFolder:token-my-bar}/packages/menubar",
-            "name": "Release token-my-bar (packages/menubar)",
+            "cwd": "${workspaceFolder:token-my-bar}/apps/menubar",
+            "name": "Release token-my-bar (apps/menubar)",
             "target": "token-my-bar",
             "configuration": "release",
-            "preLaunchTask": "swift: Build Release token-my-bar (packages/menubar)"
+            "preLaunchTask": "swift: Build Release token-my-bar (apps/menubar)"
         }
     ]
 }

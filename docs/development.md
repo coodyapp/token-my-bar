@@ -4,27 +4,27 @@ Monorepo layout:
 
 | Path | What |
 |---|---|
-| `packages/menubar` | Swift package: menu bar app (`TokenMyBar`), shared core (`TokenMyBarCore`), CLI (`token-my-bar`) |
-| `packages/www` | React + Vite marketing site |
+| `apps/menubar` | Swift package: menu bar app (`TokenMyBar`), shared core (`TokenMyBarCore`), CLI (`token-my-bar`) |
+| `apps/www` | React + Vite marketing site |
 | `docs/` | Product, architecture, vendor, and user docs |
 
 ## Prerequisites
 
 - macOS 14+, Xcode command line tools (Swift 5.9+)
-- Node 20 + pnpm (only for `packages/www`)
+- Node 20 + pnpm (only for `apps/www`)
 
 ## Build & test
 
 ```bash
 # Swift app + core + CLI
-swift build --package-path packages/menubar
-swift test  --package-path packages/menubar
+swift build --package-path apps/menubar
+swift test  --package-path apps/menubar
 
 # Run the app from the build tree
-swift run --package-path packages/menubar TokenMyBar
+swift run --package-path apps/menubar TokenMyBar
 
 # Diagnostics CLI
-swift run --package-path packages/menubar token-my-bar status --refresh --verbose
+swift run --package-path apps/menubar token-my-bar status --refresh --verbose
 
 # Website
 pnpm install
@@ -62,7 +62,7 @@ To add a vendor, follow [adding-a-provider.md](adding-a-provider.md).
 - `.github/workflows/ci.yml` — build + test (Swift on macOS, www on Linux) for
   every push/PR to `main`.
 - `.github/workflows/release.yml` — on a `v*` tag: run tests, build the app
-  bundle and DMG via `packages/menubar/Scripts/package.sh`, and create a GitHub
+  bundle and DMG via `apps/menubar/Scripts/package.sh`, and create a GitHub
   release with the DMG attached.
 
 ## Cutting a release
