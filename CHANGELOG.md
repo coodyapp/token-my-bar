@@ -6,6 +6,18 @@ All notable changes to TokenMyBar are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-07-02
+
+### Changed
+
+- Monorepo layout renamed from `packages/*` to `apps/*`.
+- Website rebuilt: Tailwind CSS v4 (CSS-first theme), shadcn-style components,
+  Geist Variable font, light/dark theme with no-flash init and a toggle,
+  responsive layout, semantic landmarks/ARIA and reduced-motion support,
+  Homebrew copy-to-clipboard install block.
+- Website now deploys to Cloudflare Pages (`coody-tmb-www-prd-01`) from the
+  tag-driven CD workflow.
+
 ## [1.0.0] - 2026-07-01
 
 First stable release.
@@ -52,5 +64,6 @@ First stable release.
   cache files are `0600`. Keychain access is read-only behind the standard
   macOS consent prompt. All SQLite access uses parameterized queries.
 
-[Unreleased]: https://github.com/coodyapp/token-my-bar/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/coodyapp/token-my-bar/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/coodyapp/token-my-bar/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/coodyapp/token-my-bar/releases/tag/v1.0.0
