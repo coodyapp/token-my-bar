@@ -13,5 +13,11 @@
   },
   "devDependencies": {
     "wrangler": "4.101.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "sharp",
+      "workerd"
+    ]
   }
 }
