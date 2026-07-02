@@ -10,5 +10,8 @@
     "test": "pnpm --filter @token-my-bar/www test && swift test --package-path apps/menubar",
     "test:menubar": "swift test --package-path apps/menubar",
     "test:www": "pnpm --filter @token-my-bar/www test"
+  },
+  "devDependencies": {
+    "wrangler": "4.101.0"
   }
 }
