@@ -10,7 +10,13 @@ describe("Hero", () => {
     expect(
       screen.getByRole("link", { name: /star on github/i })
     ).toBeInTheDocument()
-    expect(screen.getByText(/brew install --cask token-my-bar/)).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.tagName === "CODE" &&
+          element.textContent === "brew install --cask token-my-bar"
+      )
+    ).toBeInTheDocument()
   })
 
   it("copies the install command to the clipboard on click", async () => {

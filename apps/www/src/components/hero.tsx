@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react"
 import { ArrowRight, Check, Copy } from "lucide-react"
 import { toast } from "sonner"
 
+import { FadeIn } from "@/components/core/fade-in"
+import { Typewriter } from "@/components/core/typewriter"
 import { GithubMark } from "@/components/github-mark"
 import { MenubarPreview } from "@/components/menubar-preview"
 
@@ -84,66 +86,60 @@ export function Hero() {
           </div>
 
           {/* Install terminal */}
-          <section
-            id="install"
-            className="mx-auto mt-20 flex max-w-4xl scroll-mt-8 flex-col gap-3 sm:mt-24"
-          >
-            <div className="overflow-hidden rounded-xl border border-white/10 bg-[#161618] shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_20px_45px_-15px_rgba(0,0,0,0.7)]">
-              <div className="flex items-center justify-between border-b border-white/10 bg-[#232326] py-2 pr-2 pl-4">
-                <div className="flex items-center gap-3">
-                  <div aria-hidden className="flex items-center gap-1.5">
-                    <span className="size-2.5 rounded-full bg-[#ff5f57]" />
-                    <span className="size-2.5 rounded-full bg-[#febc2e]" />
-                    <span className="size-2.5 rounded-full bg-[#28c840]" />
-                  </div>
-                  <span className="font-mono text-xs font-medium text-gray-400">
-                    Terminal — zsh
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={copyInstallCmd}
-                  className="inline-flex h-7 items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 font-mono text-xs text-gray-300 transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white"
-                >
-                  {copied ? (
-                    <Check className="size-3.5 text-[#28c840]" />
-                  ) : (
-                    <Copy className="size-3.5" />
-                  )}
-                  {copied ? "copied" : "copy"}
-                </button>
-              </div>
-              <div className="flex flex-col gap-2.5 bg-[#0c0c0e] p-5 text-left font-mono text-sm leading-6">
-                {INSTALL_COMMANDS.map((command) => (
-                  <div key={command} className="flex gap-2.5">
-                    <span aria-hidden className="text-primary select-none">
-                      $
+          <FadeIn>
+            <section
+              id="install"
+              className="mx-auto mt-20 flex max-w-4xl scroll-mt-8 flex-col gap-3 sm:mt-24"
+            >
+              <div className="overflow-hidden rounded-xl border border-white/10 bg-[#161618] shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_20px_45px_-15px_rgba(0,0,0,0.7)]">
+                <div className="flex items-center justify-between border-b border-white/10 bg-[#232326] py-2 pr-2 pl-4">
+                  <div className="flex items-center gap-3">
+                    <div aria-hidden className="flex items-center gap-1.5">
+                      <span className="size-2.5 rounded-full bg-[#ff5f57]" />
+                      <span className="size-2.5 rounded-full bg-[#febc2e]" />
+                      <span className="size-2.5 rounded-full bg-[#28c840]" />
+                    </div>
+                    <span className="font-mono text-xs font-medium text-gray-400">
+                      Terminal — zsh
                     </span>
-                    <code className="break-all whitespace-pre-wrap text-gray-100">
-                      {command}
-                    </code>
                   </div>
-                ))}
+                  <button
+                    type="button"
+                    onClick={copyInstallCmd}
+                    className="inline-flex h-7 items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 font-mono text-xs text-gray-300 transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white"
+                  >
+                    {copied ? (
+                      <Check className="size-3.5 text-[#28c840]" />
+                    ) : (
+                      <Copy className="size-3.5" />
+                    )}
+                    {copied ? "copied" : "copy"}
+                  </button>
+                </div>
+                <Typewriter
+                  lines={INSTALL_COMMANDS}
+                  className="flex flex-col gap-2.5 bg-[#0c0c0e] p-5 text-left font-mono text-sm leading-6"
+                />
               </div>
-            </div>
-            <p className="text-center font-mono text-sm text-muted-foreground">
-              Installs <code>TokenMyBar.app</code> via Homebrew cask. Prefer a
-              DMG? Grab the{" "}
-              <a
-                href={`${REPO}/releases/latest`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
-              >
-                latest release
-              </a>
-              .
-            </p>
-          </section>
+              <p className="text-center font-mono text-sm text-muted-foreground">
+                Installs <code>TokenMyBar.app</code> via Homebrew cask. Prefer
+                a DMG? Grab the{" "}
+                <a
+                  href={`${REPO}/releases/latest`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  latest release
+                </a>
+                .
+              </p>
+            </section>
+          </FadeIn>
 
-          <div className="mx-auto mt-20 flex justify-center sm:mt-24">
+          <FadeIn className="mx-auto mt-20 flex justify-center sm:mt-24">
             <MenubarPreview />
-          </div>
+          </FadeIn>
         </div>
       </section>
     </div>

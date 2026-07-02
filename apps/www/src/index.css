@@ -108,3 +108,47 @@
     animation: none;
   }
 }
+
+@keyframes tmb-char-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.tmb-typewriter-char {
+  opacity: 0;
+  animation: tmb-char-in 0.08s linear forwards;
+}
+
+@keyframes tmb-caret-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.tmb-typewriter-caret {
+  display: inline-block;
+  width: 8px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background-color: currentColor;
+  animation: tmb-caret-blink 1s step-end infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tmb-typewriter-char {
+    animation: none;
+    opacity: 1;
+  }
+  .tmb-typewriter-caret {
+    animation: none;
+  }
+}
