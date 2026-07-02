@@ -65,10 +65,6 @@ export function Hero() {
               real-time insight into token usage, reset windows, and plan
               limits across Claude Code, OpenAI Codex, and OpenCode.
             </p>
-            <p className="text-center font-mono text-xs text-[rgba(235,235,245,0.45)]">
-              Built with a privacy-first approach, it runs with zero
-              telemetry.
-            </p>
             <div className="items-center justify-center space-y-3 gap-x-3 sm:flex sm:space-y-0">
               <span className="relative inline-block overflow-hidden rounded-full p-[1.5px]">
                 <span className="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#FECACA_0%,#B22929_50%,#FECACA_100%)]" />
