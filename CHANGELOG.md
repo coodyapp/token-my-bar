@@ -6,6 +6,48 @@ All notable changes to TokenMyBar are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Homebrew cask moved out of this repo to a dedicated
+  [coodyapp/homebrew-tap](https://github.com/coodyapp/homebrew-tap) —
+  `brew tap coodyapp/token-my-bar` → `brew tap coodyapp/tap`.
+
+### Fixed
+
+- Menu bar: session/weekly usage windowing used two different clocks,
+  and records with no timestamp were counted into both windows forever.
+- Menu bar: OpenCode cookie provider swallowed real auth/parse errors
+  behind a generic "no data" message.
+- Menu bar: popover row text could get squeezed instead of truncating;
+  plan/status badges could wrap and break their pill shape; the vendor
+  icon wasn't hidden from VoiceOver; Settings clipped at larger Dynamic
+  Type; the popover no longer shows its default anchor arrow.
+- Menu bar: vendor order in the CLI and popover was a network-race
+  artifact (task-group completion order) instead of a fixed order.
+- Menu bar/CLI: closed a TOCTOU permission window on the temp cookie DB
+  copy and the browser-cookie-import temp file; CLI dropped a duplicate
+  `JSONEncoder` config and a trailing-space bug in `--verbose` output.
+- Website: build was broken (`vite.config.ts` read the now-removed
+  `Casks/token-my-bar.rb` for its version string) — now reads
+  `apps/www/package.json`'s own version instead.
+
+## [1.0.4] - 2026-07-02
+
+### Added
+
+- Website: scroll-triggered fade-in (via `motion/react`, `whileInView`) on
+  the install-terminal and menu-bar preview sections, disabled site-wide
+  under `prefers-reduced-motion`. Terminal install commands now type in
+  per-character via CSS `animation-delay` (no JS interval, so tests stay
+  synchronous).
+
+## [1.0.3] - 2026-07-02
+
+### Fixed
+
+- Website: removed a redundant zero-telemetry blurb from the hero CTA that
+  duplicated messaging already present in the features section.
+
 ## [1.0.2] - 2026-07-02
 
 ### Added
