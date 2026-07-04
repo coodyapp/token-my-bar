@@ -6,6 +6,8 @@ All notable changes to TokenMyBar are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-07-04
+
 ### Changed
 
 - Homebrew cask moved out of this repo to a dedicated
