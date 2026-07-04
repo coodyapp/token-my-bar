@@ -8,7 +8,7 @@
 
 ## Homebrew
 ```bash
-brew tap coodyapp/token-my-bar
+brew tap coodyapp/tap
 brew install --cask token-my-bar
 ```
 Tap trust wall? Skip `brew trust` and install with the check disabled instead:

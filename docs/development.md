@@ -70,7 +70,7 @@ To add a vendor, follow [adding-a-provider.md](adding-a-provider.md).
 1. Update `CHANGELOG.md` (move Unreleased → new version section).
 2. Commit, push `main`, wait for CI green.
 3. `git tag vX.Y.Z && git push origin vX.Y.Z` — the release workflow does the rest.
-4. In [coodyapp/homebrew-token-my-bar](https://github.com/coodyapp/homebrew-token-my-bar),
+4. In [coodyapp/homebrew-tap](https://github.com/coodyapp/homebrew-tap),
    update `Casks/token-my-bar.rb` with the new version and the `sha256` of the
    **released** DMG (`shasum -a 256 TokenMyBar-X.Y.Z.dmg`), commit and push.
 

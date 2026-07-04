@@ -16,10 +16,10 @@ TokenMyBar is a native macOS menu bar app. It requires **macOS 14 (Sonoma) or ne
 
 ## Option 2: Homebrew
 
-The cask lives in [coodyapp/homebrew-token-my-bar](https://github.com/coodyapp/homebrew-token-my-bar):
+The cask lives in [coodyapp/homebrew-tap](https://github.com/coodyapp/homebrew-tap):
 
 ```bash
-brew tap coodyapp/token-my-bar
+brew tap coodyapp/tap
 brew install --cask token-my-bar
 ```
 
