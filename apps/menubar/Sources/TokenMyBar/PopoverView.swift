@@ -62,7 +62,11 @@ struct PopoverView: View {
     @ViewBuilder
     private var content: some View {
         if displaySnapshots.isEmpty {
-            EmptyStateView()
+            if snapshots.isEmpty {
+                EmptyStateView()
+            } else {
+                LoadingStateView()
+            }
         } else {
             VStack(spacing: 0) {
                 ForEach(Array(displaySnapshots.enumerated()), id: \.element.id) { index, snapshot in
@@ -201,6 +205,7 @@ private struct VendorHeader: View {
                 .symbolRenderingMode(.monochrome)
                 .foregroundStyle(.primary)
                 .frame(width: 18, height: 18)
+                .accessibilityHidden(true)
 
             Text(snapshot.displayName)
                 .font(.system(size: 14, weight: .semibold))
@@ -226,6 +231,7 @@ private struct PlanBadge: View {
         Text(text)
             .font(.system(size: 10, weight: .medium))
             .foregroundStyle(.secondary)
+            .lineLimit(1)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(Capsule().fill(Color.secondary.opacity(0.18)))
@@ -263,6 +269,7 @@ private struct StatusBadge: View {
             .labelStyle(.titleAndIcon)
             .font(.system(size: 11, weight: .semibold))
             .foregroundStyle(tint)
+            .lineLimit(1)
             .padding(.horizontal, 7)
             .padding(.vertical, 2.5)
             .background(Capsule().fill(tint.opacity(0.14)))
@@ -308,7 +315,6 @@ private struct UsageRowView: View {
                     .lineLimit(1)
             }
             .padding(.leading, 9)
-            .fixedSize(horizontal: true, vertical: false)
 
             Spacer(minLength: 12)
 
@@ -372,6 +378,23 @@ private struct ProgressBar: View {
         .accessibilityElement()
         .accessibilityLabel("Usage")
         .accessibilityValue("\(Int(percent))%")
+    }
+}
+
+// MARK: - Loading state
+
+private struct LoadingStateView: View {
+    var body: some View {
+        VStack(spacing: 8) {
+            ProgressView()
+                .controlSize(.small)
+            Text("Loading usage…")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 28)
     }
 }
 

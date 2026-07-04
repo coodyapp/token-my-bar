@@ -116,7 +116,7 @@ public struct LocalJSONLUsageProvider: ProviderClient {
             if let modified = try? file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate {
                 lastUpdatedAt = maxDate(lastUpdatedAt, modified)
             }
-            try scanFile(file, totals: &totals, seenIDs: &seenIDs)
+            try scanFile(file, totals: &totals, seenIDs: &seenIDs, now: now)
         }
 
         return LocalJSONLUsage(
@@ -181,7 +181,7 @@ public struct LocalJSONLUsageProvider: ProviderClient {
         return (recent + older.prefix(olderBudget)).map(\.url)
     }
 
-    private func scanFile(_ file: URL, totals: inout MutableUsageTotals, seenIDs: inout Set<String>) throws {
+    private func scanFile(_ file: URL, totals: inout MutableUsageTotals, seenIDs: inout Set<String>, now: Date) throws {
         let handle = try FileHandle(forReadingFrom: file)
         defer { try? handle.close() }
 
@@ -194,7 +194,7 @@ public struct LocalJSONLUsageProvider: ProviderClient {
             while let newlineRange = buffer.firstRange(of: Data([0x0A])) {
                 let line = buffer.subdata(in: buffer.startIndex..<newlineRange.lowerBound)
                 buffer.removeSubrange(buffer.startIndex..<newlineRange.upperBound)
-                processLine(line, totals: &totals, seenIDs: &seenIDs)
+                processLine(line, totals: &totals, seenIDs: &seenIDs, now: now)
             }
 
             if buffer.count > maxLineBytes {
@@ -203,11 +203,11 @@ public struct LocalJSONLUsageProvider: ProviderClient {
         }
 
         if !buffer.isEmpty {
-            processLine(buffer, totals: &totals, seenIDs: &seenIDs)
+            processLine(buffer, totals: &totals, seenIDs: &seenIDs, now: now)
         }
     }
 
-    private func processLine(_ line: Data, totals: inout MutableUsageTotals, seenIDs: inout Set<String>) {
+    private func processLine(_ line: Data, totals: inout MutableUsageTotals, seenIDs: inout Set<String>, now: Date) {
         guard !line.isEmpty,
               line.count <= maxLineBytes,
               let object = try? JSONSerialization.jsonObject(with: line) as? [String: Any]
@@ -222,7 +222,7 @@ public struct LocalJSONLUsageProvider: ProviderClient {
             parsed,
             timestamp: Self.timestamp(in: object),
             model: Self.model(in: object),
-            now: Date()
+            now: now
         )
     }
 
@@ -312,9 +312,6 @@ private struct MutableUsageTotals {
         if let timestamp {
             if timestamp >= now.addingTimeInterval(-5 * 60 * 60) { session += total }
             if timestamp >= now.addingTimeInterval(-7 * 24 * 60 * 60) { weekly += total }
-        } else {
-            session += total
-            weekly += total
         }
         if model?.localizedCaseInsensitiveContains("sonnet") == true {
             sonnet += total
@@ -383,7 +380,7 @@ extension LocalJSONLUsage {
         rows.append(UsageRow(
             key: "cache-reasoning",
             title: "Cache + reasoning",
-            subtitle: "Shown separately from headline usage",
+            subtitle: "All time, not windowed like Session/Weekly",
             value: Format.count(cacheReadTokens + cacheWriteTokens + reasoningTokens),
             unit: .tokens
         ))

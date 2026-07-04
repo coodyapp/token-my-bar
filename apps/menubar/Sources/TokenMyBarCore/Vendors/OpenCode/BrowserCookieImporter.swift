@@ -157,6 +157,7 @@ public enum BrowserCookieImporter {
         defer { try? fm.removeItem(at: temp) }
         do {
             try fm.copyItem(at: URL(fileURLWithPath: dbPath), to: temp)
+            try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: temp.path)
         } catch {
             return nil
         }

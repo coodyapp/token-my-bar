@@ -199,7 +199,8 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 520, height: 660)
+        .frame(width: 520)
+        .frame(minHeight: 660)
         .tint(.accentColor)
     }
 }

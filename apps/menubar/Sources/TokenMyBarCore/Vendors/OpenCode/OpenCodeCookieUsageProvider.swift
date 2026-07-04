@@ -9,10 +9,25 @@ public struct OpenCodeCookieUsageProvider: ProviderClient {
         do {
             let cookie = try Self.cookieHeader()
             let workspaceIDs = try await Self.workspaceIDs(cookie: cookie)
+            var lastError: Error?
             for workspaceID in workspaceIDs {
-                guard let object = try? await Self.usageObject(cookie: cookie, workspaceID: workspaceID) else { continue }
-                let snapshot = Self.snapshot(from: object)
-                if snapshot.status == .ok { return snapshot }
+                do {
+                    let object = try await Self.usageObject(cookie: cookie, workspaceID: workspaceID)
+                    let snapshot = Self.snapshot(from: object)
+                    if snapshot.status == .ok { return snapshot }
+                } catch {
+                    lastError = error
+                }
+            }
+            if let lastError {
+                return .failure(
+                    lastError,
+                    providerID: providerID,
+                    source: .browserCookie,
+                    authSummary: "OpenCode cookie",
+                    missingMessage: "OpenCode cookie not configured",
+                    failureMessage: "OpenCode cookie usage failed"
+                )
             }
             return .noData(providerID, source: .browserCookie, message: "No OpenCode workspace reported usage", authSummary: "OpenCode cookie")
         } catch {

@@ -183,7 +183,7 @@ extension OpenCodeLocalUsage {
             UsageRow(
                 key: "cache-reasoning",
                 title: "Cache + reasoning",
-                subtitle: "Local cache/reasoning tokens",
+                subtitle: "All time, not windowed like Session/Weekly",
                 value: Format.count(tokensCacheRead + tokensCacheWrite + tokensReasoning),
                 percent: nil,
                 trend: .unknown,

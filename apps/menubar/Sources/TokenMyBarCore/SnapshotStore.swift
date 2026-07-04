@@ -81,8 +81,9 @@ public actor SnapshotStore {
         let data = try JSONEncoder.tokenMyBar.encode(snapshots)
         let tempURL = directory.appendingPathComponent(".snapshots.json.tmp")
         defer { try? FileManager.default.removeItem(at: tempURL) }
-        try data.write(to: tempURL, options: [.atomic])
-        try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: tempURL.path)
+        guard FileManager.default.createFile(atPath: tempURL.path, contents: data, attributes: [.posixPermissions: 0o600]) else {
+            throw CocoaError(.fileWriteUnknown)
+        }
 
         if FileManager.default.fileExists(atPath: fileURL.path) {
             _ = try FileManager.default.replaceItemAt(fileURL, withItemAt: tempURL)

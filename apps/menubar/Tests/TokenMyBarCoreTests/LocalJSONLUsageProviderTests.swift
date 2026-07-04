@@ -36,9 +36,10 @@ import Testing
     // All five files are recent (default mtime = now), so they all fall
     // inside the 7-day weekly window. A cap of 3 must not drop any of them —
     // only files older than the weekly window may be capped.
+    let timestamp = ISO8601DateFormatter().string(from: Date())
     for index in 0..<5 {
         let file = directory.appendingPathComponent("session-\(index).jsonl")
-        let line = #"{"uuid":"u\#(index)","message":{"id":"m\#(index)","usage":{"input_tokens":10}}}"#
+        let line = #"{"uuid":"u\#(index)","timestamp":"\#(timestamp)","message":{"id":"m\#(index)","usage":{"input_tokens":10}}}"#
         try line.write(to: file, atomically: true, encoding: .utf8)
     }
     let provider = LocalJSONLUsageProvider(providerID: .codex, roots: [directory], authSummary: "test", maxFiles: 3)
@@ -47,6 +48,19 @@ import Testing
 
     #expect(usage.sampleCount == 5)
     #expect(usage.weeklyTokens == 50)
+}
+
+@Test func localJSONLScannerExcludesTimestamplessRecordsFromWindowedTotals() throws {
+    let root = try makeJSONLRoot(lines: [
+        #"{"uuid":"u1","message":{"id":"m1","usage":{"input_tokens":10}}}"#,
+    ])
+    let provider = LocalJSONLUsageProvider(providerID: .codex, roots: [root], authSummary: "test")
+
+    let usage = try provider.scanUsage()
+
+    #expect(usage.inputTokens == 10)
+    #expect(usage.sessionTokens == 0)
+    #expect(usage.weeklyTokens == 0)
 }
 
 @Test func localJSONLSnapshotReportsMissingLogs() async {
