@@ -51,6 +51,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         popover.behavior = .transient
         popover.contentSize = NSSize(width: popoverWidth, height: 560)
+        // NSPopover has no public API to hide its anchor arrow; this KVC key
+        // is the standard (long-stable, widely used) workaround.
+        popover.setValue(true, forKeyPath: "shouldHideAnchor")
 
         render()
         scheduleRefreshTimer()
