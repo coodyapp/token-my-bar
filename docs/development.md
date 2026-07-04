@@ -73,6 +73,9 @@ To add a vendor, follow [adding-a-provider.md](adding-a-provider.md).
 4. In [coodyapp/homebrew-tap](https://github.com/coodyapp/homebrew-tap),
    update `Casks/token-my-bar.rb` with the new version and the `sha256` of the
    **released** DMG (`shasum -a 256 TokenMyBar-X.Y.Z.dmg`), commit and push.
+5. Bump `"version"` in `apps/www/package.json` to `X.Y.Z` — it's the source
+   for the version label on the site (`vite.config.ts` reads it into
+   `VITE_TMB_VERSION`), commit and push.
 
 Signing/notarization are opt-in in `package.sh` via `DEVELOPER_ID_APP` /
 `AC_APPLE_ID` / `AC_TEAM_ID` / `AC_PASSWORD` (see the script header). Releases
