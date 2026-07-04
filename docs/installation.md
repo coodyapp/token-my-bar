@@ -9,22 +9,24 @@ TokenMyBar is a native macOS menu bar app. It requires **macOS 14 (Sonoma) or ne
 3. Launch TokenMyBar. The app lives in the menu bar only (no Dock icon).
 
 > **Unsigned build note:** current releases are not notarized. On first launch
-> macOS Gatekeeper may block the app. Right-click TokenMyBar.app → **Open** →
-> **Open**, or allow it under **System Settings → Privacy & Security**.
+> macOS Gatekeeper may block the app — for a fully unsigned binary, right-click
+> → **Open** often has no bypass option. If so, strip the quarantine flag:
+> `xattr -cr /Applications/TokenMyBar.app`, then open it (or allow it under
+> **System Settings → Privacy & Security → Open Anyway**).
 
 ## Option 2: Homebrew
 
-The cask lives in this repository:
+The cask lives in [coodyapp/homebrew-token-my-bar](https://github.com/coodyapp/homebrew-token-my-bar):
 
 ```bash
-brew tap coodyapp/token-my-bar https://github.com/coodyapp/token-my-bar
+brew tap coodyapp/token-my-bar
 brew install --cask token-my-bar
 ```
 
-> While this repository is private, `brew` needs GitHub credentials that can
-> read it (e.g. `export HOMEBREW_GITHUB_API_TOKEN=<token>` and a git
-> credential helper that can clone the repo). Once the repository is public
-> this works without any setup.
+> **Tap trust:** recent Homebrew requires trusting third-party taps before
+> loading casks from them. Rather than running `brew trust`, you can install
+> with the check disabled for this one command:
+> `HOMEBREW_NO_REQUIRE_TAP_TRUST=1 brew install --cask token-my-bar`.
 
 ## Option 3: Build from source
 
