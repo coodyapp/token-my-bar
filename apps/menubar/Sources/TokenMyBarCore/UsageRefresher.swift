@@ -68,7 +68,7 @@ public actor UsageRefresher {
             return fresh
         }
 
-        let results = await withTaskGroup(of: ProviderSnapshot.self) { group in
+        let unordered = await withTaskGroup(of: ProviderSnapshot.self) { group in
             for provider in providers {
                 group.addTask { await self.snapshot(for: provider) }
             }
@@ -78,6 +78,12 @@ public actor UsageRefresher {
             }
             return collected
         }
+
+        // Task-group completion order is a network race, not a stable order;
+        // callers (CLI --json/--verbose, menu bar popover) need one fixed
+        // vendor order across runs instead of one that shuffles per refresh.
+        let order = Dictionary(uniqueKeysWithValues: ProviderID.allCases.enumerated().map { ($1, $0) })
+        let results = unordered.sorted { (order[$0.providerID] ?? .max) < (order[$1.providerID] ?? .max) }
 
         for snapshot in results where snapshot.status != .ok {
             Log.provider.notice("\(snapshot.providerID.rawValue) refresh returned \(snapshot.status.rawValue)")

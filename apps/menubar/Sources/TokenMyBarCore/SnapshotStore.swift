@@ -120,7 +120,7 @@ final class FileLock {
     deinit { unlock() }
 }
 
-extension JSONEncoder {
+public extension JSONEncoder {
     static var tokenMyBar: JSONEncoder {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601

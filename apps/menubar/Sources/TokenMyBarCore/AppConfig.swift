@@ -74,11 +74,12 @@ public struct AppConfig: Equatable, Sendable {
 
     /// Maps user-friendly vendor aliases to a vendor ID.
     public static func vendor(from raw: String) -> ProviderID? {
-        switch raw.trimmingCharacters(in: .whitespaces).lowercased() {
+        let normalized = raw.trimmingCharacters(in: .whitespaces).lowercased()
+        return switch normalized {
         case "codex", "openai", "openai-codex": .codex
         case "claude", "claude-code", "anthropic": .claudeCode
         case "opencode", "open-code": .opencode
-        default: ProviderID(rawValue: raw)
+        default: ProviderID(rawValue: normalized)
         }
     }
 }

@@ -155,12 +155,9 @@ public enum BrowserCookieImporter {
         guard fm.fileExists(atPath: dbPath) else { return nil }
         let temp = fm.temporaryDirectory.appendingPathComponent("tmb-cookies-\(UUID().uuidString).sqlite")
         defer { try? fm.removeItem(at: temp) }
-        do {
-            try fm.copyItem(at: URL(fileURLWithPath: dbPath), to: temp)
-            try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: temp.path)
-        } catch {
-            return nil
-        }
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: dbPath)),
+              fm.createFile(atPath: temp.path, contents: data, attributes: [.posixPermissions: 0o600])
+        else { return nil }
 
         var db: OpaquePointer?
         let flags = SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX

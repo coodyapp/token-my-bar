@@ -58,7 +58,7 @@ struct Status: AsyncParsableCommand {
 
         if json {
             let snapshot = try selectSnapshot(from: snapshots, status: status, config: config)
-            let data = try JSONEncoder.tokenMyBarCLI.encode(snapshot.vendorReport())
+            let data = try JSONEncoder.tokenMyBar.encode(snapshot.vendorReport())
             FileHandle.standardOutput.write(data)
             FileHandle.standardOutput.write(Data("\n".utf8))
             return
@@ -69,7 +69,8 @@ struct Status: AsyncParsableCommand {
         guard verbose else { return }
         for snapshot in snapshots {
             print("")
-            print("\(snapshot.displayName) [\(snapshot.status.rawValue)] \(snapshot.authSummary ?? "")")
+            let authSuffix = snapshot.authSummary.map { " \($0)" } ?? ""
+            print("\(snapshot.displayName) [\(snapshot.status.rawValue)]\(authSuffix)")
             if let message = snapshot.message {
                 print("  note: \(message)")
             }
@@ -106,14 +107,5 @@ struct Status: AsyncParsableCommand {
         }
 
         throw ValidationError("No snapshots available. Run with --refresh first.")
-    }
-}
-
-private extension JSONEncoder {
-    static var tokenMyBarCLI: JSONEncoder {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        return encoder
     }
 }

@@ -56,6 +56,45 @@ private struct FixedProvider: ProviderClient {
     }
 }
 
+private struct DelayedProvider: ProviderClient {
+    let providerID: ProviderID
+    let delayNanoseconds: UInt64
+
+    func snapshot() async -> ProviderSnapshot {
+        try? await Task.sleep(nanoseconds: delayNanoseconds)
+        return ProviderSnapshot(
+            providerID: providerID,
+            status: .ok,
+            usedTokens: nil,
+            usagePercent: 1,
+            primarySource: .oauth,
+            confidence: .high,
+            isEstimated: false
+        )
+    }
+}
+
+@Test func refreshOrdersSnapshotsByProviderIDRegardlessOfCompletionOrder() async throws {
+    let url = tempSnapshotURL()
+    defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+
+    // opencode and claudeCode resolve before codex, the slowest, so a fix
+    // that merely preserved task-group completion order would list them
+    // first — the refresher must still return ProviderID.allCases order.
+    let refresher = UsageRefresher(
+        registry: ProviderRegistry(providers: [
+            DelayedProvider(providerID: .codex, delayNanoseconds: 30_000_000),
+            DelayedProvider(providerID: .claudeCode, delayNanoseconds: 20_000_000),
+            DelayedProvider(providerID: .opencode, delayNanoseconds: 10_000_000),
+        ]),
+        store: SnapshotStore(fileURL: url)
+    )
+
+    let snapshots = await refresher.refresh(ttl: 0)
+
+    #expect(snapshots.map(\.providerID) == [.codex, .claudeCode, .opencode])
+}
+
 private func tempSnapshotURL() -> URL {
     FileManager.default.temporaryDirectory
         .appendingPathComponent("token-my-bar-tests-\(UUID().uuidString)", isDirectory: true)
