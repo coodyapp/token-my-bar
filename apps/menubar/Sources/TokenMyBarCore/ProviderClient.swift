@@ -38,6 +38,7 @@ public struct FallbackProvider<Primary: ProviderClient, Fallback: ProviderClient
 
         let local = await fallback.snapshot()
         guard local.status == .ok || !local.usageRows.isEmpty else { return official }
+        // Intentional: unauthenticated wins over local.status so StatusBadge keeps signaling "go re-auth" instead of masking it as merely stale data.
         return ProviderSnapshot(
             providerID: providerID,
             status: official.status == .unauthenticated ? .unauthenticated : local.status,
