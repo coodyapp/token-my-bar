@@ -65,3 +65,9 @@ TokenMyBar reads usage from local app sessions and provider APIs using existing 
 - If usage is missing, open the source app once and refresh TokenMyBar.
 - If a vendor says `Sign in`, re-authenticate in that vendor's app.
 - If the menu bar is crowded, enable `Collapse to summary automatically`.
+- If the app shows in Activity Monitor but the menu bar icon never appears
+  (stuck before startup with 0% CPU), macOS kept a stale launch record for
+  the app path — this can happen after a Gatekeeper block followed by
+  reinstalls. Quit the stuck process, then run once with
+  `DYLD_PRINT_LIBRARIES=1 /Applications/TokenMyBar.app/Contents/MacOS/TokenMyBar`
+  (or reboot); normal launches work again afterwards.

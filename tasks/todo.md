@@ -18,6 +18,22 @@ app with no quarantine flag launches normally.
 - [x] tap README: quarantine-handled note
 - [x] Verify: bash -n install.sh; brew style cask; run install.sh locally
 
+## Round 2 (same day): styled DMG + launch-freeze debug
+
+- [x] Styled DMG: create-dmg window (background tiff via
+      generate-dmg-background.swift, app-drop-link), plain-DMG fallback with
+      Applications symlink; release.yml installs create-dmg
+- [x] Debugged "app in Activity Monitor but never opens": exec parked at
+      _dyld_start, 0 CPU, only main binary + dyld mapped. Path-keyed — same
+      binary ran from any other path; fresh probe bundles ran. Any DYLD_* env
+      var (slow dyld path) bypassed it, and one successful launch cleared the
+      state permanently. Verdict: stale macOS launch record for the app path
+      after Gatekeeper-deny + trash + reinstall churn; machine-local, not an
+      app/cask bug. Documented in user-guide troubleshooting.
+- [x] User's brew install failing: stale tap clone (brew tap = no-op when
+      tapped); untap/retap + reinstall fixed; postflight verified live
+- [x] Release v1.0.8 (styled DMG) + cask bump
+
 ## Review (this round)
 
 - Cask postflight uses `system_command "/usr/bin/xattr"` with

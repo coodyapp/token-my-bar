@@ -24,6 +24,11 @@ jobs:
       - name: Test (release configuration)
         run: swift test -c release --package-path apps/menubar
 
+      - name: Install create-dmg
+        # Styled drag-to-Applications DMG; package.sh falls back to a plain
+        # DMG if this is missing or create-dmg fails on the headless runner.
+        run: brew install create-dmg
+
       - name: Package app + DMG
         run: |
           VERSION="${GITHUB_REF_NAME#v}"

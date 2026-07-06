@@ -92,9 +92,37 @@ fi
 
 # --- dmg ------------------------------------------------------------------
 DMG_PATH="$DIST_DIR/$APP_NAME-$VERSION.dmg"
+DMG_BACKGROUND="$PACKAGE_DIR/Scripts/dmg-background.tiff"
 echo "==> Building DMG"
 rm -f "$DMG_PATH"
-hdiutil create -volname "$APP_NAME" -srcfolder "$APP_BUNDLE" -ov -format UDZO "$DMG_PATH" >/dev/null
+DMG_STAGING="$DIST_DIR/dmg-staging"
+rm -rf "$DMG_STAGING"
+mkdir -p "$DMG_STAGING"
+cp -R "$APP_BUNDLE" "$DMG_STAGING/"
+
+# Styled drag-to-Applications window when create-dmg is available
+# (brew install create-dmg); it drives Finder via AppleScript, which can be
+# flaky headless, so fall back to a plain DMG with an Applications symlink.
+if command -v create-dmg >/dev/null 2>&1 &&
+  create-dmg \
+    --volname "$APP_NAME" \
+    --background "$DMG_BACKGROUND" \
+    --window-pos 200 120 \
+    --window-size 655 420 \
+    --icon-size 128 \
+    --icon "$APP_NAME.app" 165 240 \
+    --app-drop-link 490 240 \
+    --hide-extension "$APP_NAME.app" \
+    --hdiutil-quiet \
+    "$DMG_PATH" "$DMG_STAGING"; then
+  echo "==> Styled DMG created"
+else
+  echo "==> create-dmg unavailable or failed — building plain DMG"
+  rm -f "$DMG_PATH"
+  ln -sf /Applications "$DMG_STAGING/Applications"
+  hdiutil create -volname "$APP_NAME" -srcfolder "$DMG_STAGING" -ov -format UDZO "$DMG_PATH" >/dev/null
+fi
+rm -rf "$DMG_STAGING"
 
 # --- notarize -------------------------------------------------------------
 if [[ -n "${DEVELOPER_ID_APP:-}" && -n "${AC_APPLE_ID:-}" && -n "${AC_TEAM_ID:-}" && -n "${AC_PASSWORD:-}" ]]; then
