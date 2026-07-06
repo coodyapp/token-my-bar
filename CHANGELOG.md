@@ -6,6 +6,26 @@ All notable changes to TokenMyBar are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.8] - 2026-07-06
+
+### Added
+
+- `install.sh` one-liner installer: downloads the release DMG with curl (no
+  quarantine flag, so no Gatekeeper block), verifies the published SHA-256,
+  installs to `/Applications`, and launches the app.
+- Styled DMG installer window ("Drag App to Applications" background with an
+  Applications drop link) built with create-dmg; falls back to a plain DMG
+  with an Applications symlink when create-dmg is unavailable.
+
+### Changed
+
+- Homebrew cask now strips the quarantine flag in a postflight, so plain
+  `brew install --cask token-my-bar` opens without Gatekeeper prompts — no
+  `--no-quarantine` env var or manual `xattr` needed.
+- Installation docs reordered: install script first, Homebrew simplified,
+  manual DMG with the quarantine step last; added a troubleshooting entry
+  for launches stuck before startup after a Gatekeeper block.
+
 ## [1.0.7] - 2026-07-06
 
 ### Fixed
