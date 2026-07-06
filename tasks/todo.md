@@ -1,24 +1,36 @@
-# Rebuild apps/www from tmp/ template
+# Fix Gatekeeper "app is damaged" for brew/DMG installs
 
-Template: tmp/ = SAK single-page Vite+React+Tailwind v4+shadcn site (ASCII logo, install cmd + copy toast, usage block, footer). Recreate apps/www with same structure, TokenMyBar context. Keep MenubarPreview component.
+Root cause: release.yml runs package.sh with no signing env → bundle ships with
+only the linker's ad-hoc Mach-O signature, unsealed at bundle level
+(`spctl: code has no resources but signature indicates they must be present`).
+Quarantined + invalid signature = "damaged" verdict, no bypass. No paid Apple
+Developer account for now (roadmap item), so: valid ad-hoc seal + docs/cask
+workarounds.
 
 ## Tasks
 
-- [x] Copy tmp config skeleton: components.json, eslint.config.js, .prettierrc, .prettierignore, .gitignore, tsconfig trio
-- [x] vite.config.ts: version single-source from Casks/token-my-bar.rb → VITE_TMB_VERSION
-- [x] package.json: keep name/scripts contract (CI runs test/build), add sonner, radix-ui, eslint+prettier stack
-- [x] index.html: TokenMyBar title/meta
-- [x] src/index.css, theme-provider, ui/button, ui/sonner, lib/utils from tmp
-- [x] src/App.tsx: TMB ASCII logo, brew install + copy toast, MenubarPreview, supported note, footer
-- [x] src/components/menubar-preview.tsx: keep (moved out of site/), keep ui/badge.tsx
-- [x] Delete old: site/*, theme-toggle, ui/card, vite-env.d.ts, tsconfig.tsbuildinfo
-- [x] pnpm install, run dev server, verify serving (browser extension unavailable — verified via module transforms + bundle grep)
-- [x] tsc build green (pnpm test:www), eslint green, vite build green
+- [x] package.sh: ad-hoc sign whole bundle when DEVELOPER_ID_APP unset; verify with codesign --verify --strict
+- [x] Cask token-my-bar.rb: bump 1.0.5 → 1.0.6 (sha 920285c9…), rewrite caveats (--no-quarantine / xattr; drop wrong right-click advice)
+- [x] docs/installation.md: brew --no-quarantine note; align unsigned-build note
+- [x] docs/product-spec.md: roadmap line — Developer ID + notarization pending paid account, ad-hoc interim
+- [x] Verify: run package.sh unsigned locally; codesign verify passes; quarantine xattr + spctl shows valid-signature rejection (not "damaged" resource error)
 
 ## Review
 
-- apps/www now mirrors tmp/ exactly: same config skeleton, single-file App.tsx page (ASCII logo → tagline → install cmd + copy toast → preview → support note → footer), tmp theme (red oklch primary, Geist, animate-logo).
-- Deviations from tmp: kept MenubarPreview + ui/badge.tsx (user asked to keep menubar app image); version read from Casks/token-my-bar.rb instead of cli bin; TokenMyBar meta/copy.
-- Fix needed: eslint-plugin-react-hooks 6.1.1 exposes `configs.recommended` not `configs.flat.recommended` (tmp's config crashed eslint).
-- CI/CD contract preserved: package name @token-my-bar/www, dev/build/test scripts unchanged; cd.yaml deploys dist/ as before.
-- Verification: pnpm test:www ✅, lint ✅, build:www ✅, dev server :5173 serving all modules 200, bundle contains brew cmd + v1.0.1 + preview strings. Visual check skipped — Chrome extension not connected.
+- package.sh now seals the whole bundle ad-hoc when unsigned: verified
+  `flags=0x2(adhoc)`, `Info.plist entries=11`, `Sealed Resources version=2`,
+  `codesign --verify --strict` passes, and with a simulated quarantine xattr
+  `spctl` returns plain "rejected" (Open Anyway flow) instead of the broken-seal
+  "code has no resources but signature indicates they must be present"
+  ("damaged" verdict, no bypass).
+- Cask bumped to 1.0.6; sha verified against the actual released DMG
+  (920285c9…). Caveats now recommend `--no-quarantine` or
+  `xattr -rd com.apple.quarantine`; the misleading right-click → Open advice is
+  gone. "Open Anyway" intentionally omitted from caveats until a release with
+  the sealed bundle ships (v1.0.6 still has the broken seal).
+- Fix reaches users only with the next release (v1.0.7): tag → release.yml →
+  new DMG → cask bump.
+- Lesson: SwiftPM's linker-signed executable inside an unsealed .app reads as a
+  *broken* signature to Gatekeeper — quarantined installs show "damaged" with
+  no bypass. Always `codesign -s -` the assembled bundle even without a
+  Developer ID.

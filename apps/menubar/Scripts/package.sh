@@ -80,7 +80,14 @@ if [[ -n "${DEVELOPER_ID_APP:-}" ]]; then
     --sign "$DEVELOPER_ID_APP" "$APP_BUNDLE"
   codesign --verify --deep --strict --verbose=2 "$APP_BUNDLE"
 else
-  echo "==> DEVELOPER_ID_APP not set — skipping codesign (unsigned build)"
+  echo "==> DEVELOPER_ID_APP not set — ad-hoc signing bundle"
+  # Without this, the bundle carries only the linker's ad-hoc signature on the
+  # bare executable; Gatekeeper treats the unsealed bundle as a broken
+  # signature and reports the quarantined app as "damaged" with no bypass.
+  # A valid ad-hoc seal downgrades that to the "unverified developer" flow
+  # (System Settings → Privacy & Security → Open Anyway).
+  codesign --force --sign - "$APP_BUNDLE"
+  codesign --verify --strict --verbose=2 "$APP_BUNDLE"
 fi
 
 # --- dmg ------------------------------------------------------------------
