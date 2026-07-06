@@ -302,8 +302,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let average = segments.map(\.percent).reduce(0, +) / Double(segments.count)
             return statusSegment(iconName: "chart.bar.xaxis", title: "\(Int(average.rounded()))%")
         case .selectedProvider:
-            guard let primary = config.primaryVendor,
-                  let selected = segments.first(where: { $0.providerID == primary }) ?? segments.first else {
+            guard let selected = SummarySelection.selected(segments, primary: config.primaryVendor, id: { $0.providerID }) else {
                 return statusText("--")
             }
             return statusSegment(iconName: selected.providerID.iconName, title: selected.title)

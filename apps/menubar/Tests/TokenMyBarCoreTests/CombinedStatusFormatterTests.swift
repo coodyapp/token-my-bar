@@ -1,6 +1,20 @@
 import Testing
 @testable import TokenMyBarCore
 
+@Test func summarySelectionPrefersPrimaryElseFallsBackToFirst() {
+    struct Seg: Equatable { let providerID: ProviderID }
+    let segments = [Seg(providerID: .claudeCode), Seg(providerID: .codex)]
+
+    // Primary configured and present -> that segment.
+    #expect(SummarySelection.selected(segments, primary: .codex, id: \.providerID) == Seg(providerID: .codex))
+    // No primary configured (the default) -> first segment, NOT nil/"--".
+    #expect(SummarySelection.selected(segments, primary: nil, id: \.providerID) == Seg(providerID: .claudeCode))
+    // Primary configured but absent from segments -> first segment.
+    #expect(SummarySelection.selected(segments, primary: .opencode, id: \.providerID) == Seg(providerID: .claudeCode))
+    // No usable segments -> nil.
+    #expect(SummarySelection.selected([Seg](), primary: nil, id: \.providerID) == nil)
+}
+
 @Test func combinedStatusUsesHighestPercent() {
     let snapshots = [
         ProviderSnapshot(
