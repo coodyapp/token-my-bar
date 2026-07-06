@@ -11,8 +11,14 @@ TokenMyBar is a native macOS menu bar app that gives you real-time insight into 
 
 ## Install
 
-- **DMG**: grab `TokenMyBar-<version>.dmg` from the [latest release](https://github.com/coodyapp/token-my-bar/releases/latest), drag to `/Applications`.
+- **Install script** (recommended — verifies checksum, no Gatekeeper prompt):
+
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/coodyapp/token-my-bar/main/install.sh | bash
+  ```
+
 - **Homebrew**: `brew tap coodyapp/tap && brew install --cask token-my-bar`
+- **DMG**: grab `TokenMyBar-<version>.dmg` from the [latest release](https://github.com/coodyapp/token-my-bar/releases/latest), drag to `/Applications`, then `xattr -rd com.apple.quarantine /Applications/TokenMyBar.app`.
 
 Full instructions (Gatekeeper notes, first-run Keychain prompts, uninstall): [docs/installation.md](docs/installation.md).
 

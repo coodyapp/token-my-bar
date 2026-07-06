@@ -1,4 +1,36 @@
-# Fix Gatekeeper "app is damaged" for brew/DMG installs
+# Easier install without Apple Developer ID (mole-inspired)
+
+Analyzed tw93/mole + tw93/homebrew-tap. Mole avoids Gatekeeper entirely:
+curl downloads never get `com.apple.quarantine` (only browsers/apps with
+LSFileQuarantineEnabled set it), plus `xattr -c` as belt-and-suspenders in
+install.sh. Gatekeeper only assesses quarantined files, so an ad-hoc signed
+app with no quarantine flag launches normally.
+
+## Tasks
+
+- [x] Cask: add `postflight` stanza stripping quarantine → plain
+      `brew install --cask token-my-bar` works with no env var / manual xattr
+- [x] Cask: rewrite caveats (postflight handles it; keep fallback xattr line)
+- [x] install.sh at repo root: curl DMG + verify .sha256 + copy to
+      /Applications + xattr clear (mole-style, one-liner installable)
+- [x] docs/installation.md: reorder options (brew now clean, add script)
+- [x] README.md install section: add script one-liner, simplify brew
+- [x] tap README: quarantine-handled note
+- [x] Verify: bash -n install.sh; brew style cask; run install.sh locally
+
+## Review (this round)
+
+- Cask postflight uses `system_command "/usr/bin/xattr"` with
+  `args: ["-dr", "com.apple.quarantine", ...]` — standard third-party-tap
+  pattern (homebrew/cask core forbids it; personal taps use it freely).
+- install.sh verifies against the released `.dmg.sha256` (hash field only —
+  the file embeds the CI build path, so `shasum -c` would fail).
+- Reaches brew users as soon as the tap change is pushed (no release needed);
+  install.sh needs a push to main.
+
+---
+
+# Fix Gatekeeper "app is damaged" for brew/DMG installs (done 2026-07-05)
 
 Root cause: release.yml runs package.sh with no signing env → bundle ships with
 only the linker's ad-hoc Mach-O signature, unsealed at bundle level

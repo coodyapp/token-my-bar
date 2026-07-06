@@ -2,18 +2,22 @@
 
 TokenMyBar is a native macOS menu bar app. It requires **macOS 14 (Sonoma) or newer** on Apple Silicon.
 
-## Option 1: DMG (recommended)
+> **Unsigned build note:** releases are ad-hoc signed, not notarized (no Apple
+> Developer ID yet). macOS Gatekeeper only checks *quarantined* apps, so the
+> install script and the Homebrew cask below clear the quarantine flag for you
+> and the app opens normally. Only a browser-downloaded DMG needs the manual
+> step described in Option 3.
 
-1. Download `TokenMyBar-<version>.dmg` from the [latest release](https://github.com/coodyapp/token-my-bar/releases/latest).
-2. Open the DMG and drag **TokenMyBar.app** to `/Applications`.
-3. Launch TokenMyBar. The app lives in the menu bar only (no Dock icon).
+## Option 1: Install script (recommended)
 
-> **Unsigned build note:** current releases are ad-hoc signed, not notarized,
-> so macOS Gatekeeper blocks the first launch ("Apple could not verify…" — or
-> "damaged" on releases up to v1.0.6). Strip the quarantine flag:
-> `xattr -rd com.apple.quarantine /Applications/TokenMyBar.app`, then open it
-> (from v1.0.7 you can instead allow it under
-> **System Settings → Privacy & Security → Open Anyway**).
+```bash
+curl -fsSL https://raw.githubusercontent.com/coodyapp/token-my-bar/main/install.sh | bash
+```
+
+Downloads the latest release DMG, verifies its SHA-256 checksum against the
+published `.dmg.sha256`, installs **TokenMyBar.app** into `/Applications`, and
+launches it. curl downloads carry no quarantine flag, so Gatekeeper does not
+block the launch. Pass a version to pin one: `./install.sh 1.0.7`.
 
 ## Option 2: Homebrew
 
@@ -21,23 +25,28 @@ The cask lives in [coodyapp/homebrew-tap](https://github.com/coodyapp/homebrew-t
 
 ```bash
 brew tap coodyapp/tap
-HOMEBREW_CASK_OPTS=--no-quarantine brew install --cask token-my-bar
+brew install --cask token-my-bar
 ```
 
-`HOMEBREW_CASK_OPTS=--no-quarantine` skips the quarantine flag so Gatekeeper
-doesn't block the unsigned app (see the note above). Homebrew 6 removed the
-`--no-quarantine` CLI flag, but the environment variable still works. Without
-it, clear the flag after install:
-`xattr -rd com.apple.quarantine /Applications/TokenMyBar.app` — or allow the
-app under **System Settings → Privacy & Security → Open Anyway** after the
-first blocked launch.
+The cask removes the quarantine flag after install (postflight), so no
+`--no-quarantine` env var or manual `xattr` is needed.
 
 > **Tap trust:** recent Homebrew requires trusting third-party taps before
 > loading casks from them. Rather than running `brew trust`, you can install
 > with the check disabled for this one command:
 > `HOMEBREW_NO_REQUIRE_TAP_TRUST=1 brew install --cask token-my-bar`.
 
-## Option 3: Build from source
+## Option 3: DMG (manual)
+
+1. Download `TokenMyBar-<version>.dmg` from the [latest release](https://github.com/coodyapp/token-my-bar/releases/latest).
+2. Open the DMG and drag **TokenMyBar.app** to `/Applications`.
+3. Strip the quarantine flag the browser download added (see the note above):
+   `xattr -rd com.apple.quarantine /Applications/TokenMyBar.app` — or launch
+   once and allow it under **System Settings → Privacy & Security → Open
+   Anyway** (v1.0.7+; earlier releases show "damaged" with no bypass).
+4. Launch TokenMyBar. The app lives in the menu bar only (no Dock icon).
+
+## Option 4: Build from source
 
 ```bash
 git clone https://github.com/coodyapp/token-my-bar.git
