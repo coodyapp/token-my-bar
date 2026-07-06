@@ -21,12 +21,16 @@ The cask lives in [coodyapp/homebrew-tap](https://github.com/coodyapp/homebrew-t
 
 ```bash
 brew tap coodyapp/tap
-brew install --cask token-my-bar --no-quarantine
+HOMEBREW_CASK_OPTS=--no-quarantine brew install --cask token-my-bar
 ```
 
-`--no-quarantine` skips the quarantine flag so Gatekeeper doesn't block the
-unsigned app (see the note above). Without it, clear the flag after install:
-`xattr -rd com.apple.quarantine /Applications/TokenMyBar.app`.
+`HOMEBREW_CASK_OPTS=--no-quarantine` skips the quarantine flag so Gatekeeper
+doesn't block the unsigned app (see the note above). Homebrew 6 removed the
+`--no-quarantine` CLI flag, but the environment variable still works. Without
+it, clear the flag after install:
+`xattr -rd com.apple.quarantine /Applications/TokenMyBar.app` — or allow the
+app under **System Settings → Privacy & Security → Open Anyway** after the
+first blocked launch.
 
 > **Tap trust:** recent Homebrew requires trusting third-party taps before
 > loading casks from them. Rather than running `brew trust`, you can install
