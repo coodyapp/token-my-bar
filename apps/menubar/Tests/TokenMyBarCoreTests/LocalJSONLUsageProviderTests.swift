@@ -63,6 +63,25 @@ import Testing
     #expect(usage.weeklyTokens == 0)
 }
 
+@Test func localJSONLScannerParsesFractionalSecondTimestampsIntoWindows() throws {
+    // Real Claude Code logs write ISO8601 timestamps WITH fractional seconds
+    // (e.g. 2026-07-04T03:10:20.906Z). A bare ISO8601DateFormatter rejects the
+    // fractional form, so without fractional-aware parsing these recent entries
+    // are silently dropped from the session/weekly totals.
+    let formatter = ISO8601DateFormatter()
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+    let timestamp = formatter.string(from: Date())
+    let root = try makeJSONLRoot(lines: [
+        #"{"uuid":"u1","timestamp":"\#(timestamp)","message":{"id":"m1","usage":{"input_tokens":10,"output_tokens":5}}}"#,
+    ])
+    let provider = LocalJSONLUsageProvider(providerID: .claudeCode, roots: [root], authSummary: "test")
+
+    let usage = try provider.scanUsage()
+
+    #expect(usage.sessionTokens == 15)
+    #expect(usage.weeklyTokens == 15)
+}
+
 @Test func localJSONLSnapshotReportsMissingLogs() async {
     let provider = LocalJSONLUsageProvider(
         providerID: .codex,

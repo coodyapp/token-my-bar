@@ -69,7 +69,9 @@ public struct VendorUsageReport: Codable, Equatable, Sendable {
 public extension ProviderSnapshot {
     /// Projects this snapshot into the uniform vendor JSON shape.
     func vendorReport() -> VendorUsageReport {
-        let percentInt = usagePercent.map { Int($0.rounded()) }
+        // Guard the Int conversion: Int(nan)/Int(inf) traps. A non-finite
+        // percent projects to no percentage rather than crashing the report.
+        let percentInt = usagePercent.flatMap { $0.isFinite ? Int($0.rounded()) : nil }
         let text = percentInt.map { "\(displayName) \($0)%" } ?? "\(displayName) --"
 
         let windows = usageRows.map { row in

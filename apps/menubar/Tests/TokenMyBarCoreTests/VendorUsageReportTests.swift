@@ -46,6 +46,23 @@ import Testing
     #expect(windows?.first?["detail"] as? String == "Resets in 1h")
 }
 
+@Test func vendorReportSurvivesNonFinitePercent() {
+    // usagePercent must never trap vendorReport()'s Int(percent.rounded()).
+    // A non-finite value projects to no percentage rather than crashing.
+    let report = ProviderSnapshot(
+        providerID: .codex,
+        status: .ok,
+        usedTokens: nil,
+        usagePercent: .nan,
+        primarySource: .oauth,
+        confidence: .high,
+        isEstimated: false
+    ).vendorReport()
+
+    #expect(report.percentage == nil)
+    #expect(report.text == "OpenAI Codex --")
+}
+
 @Test func vendorUsageReportClassTracksSeverityAndStatus() {
     let warning = ProviderSnapshot(
         providerID: .opencode,

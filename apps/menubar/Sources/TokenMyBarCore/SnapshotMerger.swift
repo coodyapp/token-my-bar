@@ -18,10 +18,18 @@ public enum SnapshotMerger {
 
     public static func snapshotsToSave(merged: [ProviderSnapshot], cached: [ProviderSnapshot]) -> [ProviderSnapshot] {
         let cachedByID = index(cached)
-        return merged.map { snapshot in
-            guard snapshot.status == .stale, let cachedSnapshot = cachedByID[snapshot.providerID] else { return snapshot }
-            return cachedSnapshot
+        let refreshed = merged.map { snapshot in
+            snapshot.status == .stale ? (cachedByID[snapshot.providerID] ?? snapshot) : snapshot
         }
+        // A subset refresh (only some providers enabled) must not drop the
+        // other vendors' last-good data from the shared cache; preserve any
+        // cached provider that wasn't part of this refresh.
+        let mergedIDs = Set(merged.map(\.providerID))
+        let untouched = cached.filter { !mergedIDs.contains($0.providerID) }
+        // Keep the persisted order canonical so cache reads (CLI/other
+        // instances) get one fixed vendor order rather than fresh-then-cached.
+        let order = Dictionary(uniqueKeysWithValues: ProviderID.allCases.enumerated().map { ($1, $0) })
+        return (refreshed + untouched).sorted { (order[$0.providerID] ?? .max) < (order[$1.providerID] ?? .max) }
     }
 
     public static func shouldUseCached(for snapshot: ProviderSnapshot) -> Bool {

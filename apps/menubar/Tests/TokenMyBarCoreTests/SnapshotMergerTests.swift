@@ -67,6 +67,25 @@ private func mergeSnap(
     #expect(toSave.first?.usagePercent == 50)
 }
 
+@Test func snapshotsToSaveKeepsCachedProvidersAbsentFromRefresh() {
+    // A subset refresh (e.g. only claude-code enabled) must not wipe other
+    // vendors' last-good data from the shared on-disk cache that the CLI and
+    // other instances read without an enabled filter.
+    let cached = [
+        mergeSnap(.claudeCode, status: .ok, percent: 10),
+        mergeSnap(.codex, status: .ok, percent: 50),
+    ]
+    let merged = SnapshotMerger.merge(fresh: [mergeSnap(.claudeCode, status: .ok, percent: 20)], cached: cached)
+    let toSave = SnapshotMerger.snapshotsToSave(merged: merged, cached: cached)
+
+    #expect(toSave.count == 2)
+    #expect(toSave.contains { $0.providerID == .codex && $0.usagePercent == 50 })
+    #expect(toSave.contains { $0.providerID == .claudeCode && $0.usagePercent == 20 })
+    // Persisted order is canonical (codex, claude-code, opencode) regardless of
+    // which subset refreshed, so cache readers see one stable vendor order.
+    #expect(toSave.map(\.providerID) == [.codex, .claudeCode])
+}
+
 @Test func shouldUseCachedBucketsByStatus() {
     #expect(SnapshotMerger.shouldUseCached(for: mergeSnap(.codex, status: .error)))
     #expect(SnapshotMerger.shouldUseCached(for: mergeSnap(.codex, status: .unauthenticated)))

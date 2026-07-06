@@ -255,7 +255,11 @@ public struct LocalJSONLUsageProvider: ProviderClient {
 
     private static func timestamp(in object: [String: Any]) -> Date? {
         if let value = object["timestamp"] as? String {
-            return ISO8601DateFormatter().date(from: value)
+            // Real logs (Claude Code, Codex) write fractional seconds, e.g.
+            // "2026-07-04T03:10:20.906Z"; a bare ISO8601DateFormatter rejects
+            // them. Reuse the fractional-aware parser so recent entries land in
+            // the session/weekly windows instead of being silently dropped.
+            return RemoteJSON.parseISO8601(value)
         }
         if let value = object["timestamp"] as? Double {
             return Date(timeIntervalSince1970: value > 10_000_000_000 ? value / 1000 : value)
