@@ -6,6 +6,40 @@ All notable changes to TokenMyBar are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-07-06
+
+### Fixed
+
+- Menu bar: local usage logs with fractional-second ISO8601 timestamps —
+  the format Claude Code and Codex actually write (e.g. `…:20.906Z`) —
+  failed to parse, so every recent entry was dropped from the session and
+  weekly windows and the local-history fallback reported zero usage.
+- Menu bar: refreshing a subset of providers (some disabled) overwrote the
+  shared cache with only that subset, dropping the other vendors' last-good
+  data that the CLI and other instances read; the persisted set now keeps
+  cached-only vendors in a canonical order.
+- Menu bar: a non-finite (NaN/Inf) usage percent from a malformed payload
+  crashed the vendor report via `Int(percent.rounded())`; non-finite
+  percents are now rejected at the source and the conversion is guarded.
+- Menu bar: the "Selected Provider" summary showed `--` whenever no primary
+  vendor was configured (the default) instead of falling back to the first
+  vendor.
+- Menu bar: the Claude OAuth file-credential path could return an unrelated
+  `mcpOAuth` token; it now uses the same guarded extractor as the Keychain
+  path, and Keychain lookups fetch each item by unique reference so
+  duplicate service+account entries no longer collapse.
+- Menu bar: browser cookie import matched look-alike domains via an
+  unanchored `LIKE '%domain%'` and never filtered expired cookies; the host
+  match is now anchored to the domain and its subdomains, expired cookies
+  are dropped, and a superseded refresh no longer fires an extra network
+  request after cancellation.
+- Menu bar: compact counts render `1M` instead of `1000K` at the rounding
+  boundary.
+- Website: the install-command copy button handles clipboard failures
+  (insecure context / denied permission) with an error toast instead of an
+  unhandled rejection; the preview's refresh timers no longer accumulate
+  timeout ids for the page's lifetime.
+
 ## [1.0.5] - 2026-07-04
 
 ### Changed
