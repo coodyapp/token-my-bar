@@ -27,7 +27,15 @@ export function Hero() {
   }, [])
 
   const copyInstallCmd = async () => {
-    await navigator.clipboard.writeText(INSTALL_CMD)
+    try {
+      if (!navigator.clipboard) throw new Error("Clipboard API unavailable")
+      await navigator.clipboard.writeText(INSTALL_CMD)
+    } catch {
+      // Insecure context (http/file preview) or a denied permission rejects
+      // the write; surface it instead of leaving an unhandled rejection.
+      toast("Copy failed — select the command and copy manually")
+      return
+    }
     setCopied(true)
     toast("Copied to clipboard")
     if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current)

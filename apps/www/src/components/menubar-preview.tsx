@@ -327,7 +327,8 @@ export function MenubarPreview() {
   const [filled, setFilled] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const refreshingRef = useRef(false)
-  const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  const fillTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
+  const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null)
 
   // Refresh like the app: spinner in the header, bars drain and re-fill.
   const runRefresh = () => {
@@ -335,24 +336,24 @@ export function MenubarPreview() {
     refreshingRef.current = true
     setRefreshing(true)
     setFilled(false)
-    timeoutsRef.current.push(
-      setTimeout(() => {
-        refreshingRef.current = false
-        setRefreshing(false)
-        setFilled(true)
-      }, 900)
-    )
+    // One refresh is in flight at a time (guarded above), so a single ref
+    // holds the active timeout instead of an ever-growing array.
+    refreshTimeoutRef.current = setTimeout(() => {
+      refreshingRef.current = false
+      setRefreshing(false)
+      setFilled(true)
+    }, 900)
   }
 
   // Fill on mount, then loop the refresh simulation.
   useEffect(() => {
-    const timeouts = timeoutsRef.current
-    timeouts.push(setTimeout(() => setFilled(true), 300))
+    fillTimeoutRef.current = setTimeout(() => setFilled(true), 300)
     const interval = setInterval(runRefresh, 7000)
 
     return () => {
       clearInterval(interval)
-      timeouts.forEach(clearTimeout)
+      if (fillTimeoutRef.current) clearTimeout(fillTimeoutRef.current)
+      if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current)
     }
   }, [])
 
