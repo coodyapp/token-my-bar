@@ -50,6 +50,29 @@ public enum BrowserCookieImporter {
         return firefoxCookies(domain: domain)
     }
 
+    // MARK: - Host / expiry filtering
+
+    /// True when `host` is the domain itself or one of its subdomains.
+    /// Anchored so look-alikes (`myopencode.ai`, `opencode.ai.attacker.com`)
+    /// never match and get their cookies sent to the real domain.
+    static func hostMatches(_ host: String, domain: String) -> Bool {
+        host == domain || host == "." + domain || host.hasSuffix("." + domain)
+    }
+
+    /// Chromium `expires_utc` is microseconds since 1601-01-01; `0` marks a
+    /// non-persistent session cookie, which is still valid.
+    static func isUnexpiredChromium(expiresUtc: Int64, now: Date = Date()) -> Bool {
+        guard expiresUtc != 0 else { return true }
+        let nowMicros = Int64((now.timeIntervalSince1970 + 11_644_473_600) * 1_000_000)
+        return expiresUtc > nowMicros
+    }
+
+    /// Firefox `expiry` is Unix seconds; `0` marks a session cookie.
+    static func isUnexpiredFirefox(expiry: Int64, now: Date = Date()) -> Bool {
+        guard expiry != 0 else { return true }
+        return expiry > Int64(now.timeIntervalSince1970)
+    }
+
     // MARK: - Chromium
 
     private static func chromiumCookies(browser: ChromiumBrowser, root: URL, domain: String) -> [Cookie] {
@@ -95,16 +118,21 @@ public enum BrowserCookieImporter {
         let encryptedValue: Data
     }
 
-    private static func readChromiumRows(dbPath: String, domain: String) -> [ChromiumRow] {
+    private static func readChromiumRows(dbPath: String, domain: String, now: Date = Date()) -> [ChromiumRow] {
         readDatabaseCopy(dbPath: dbPath) { db in
             var rows: [ChromiumRow] = []
-            let sql = "SELECT name, encrypted_value FROM cookies WHERE host_key LIKE ?;"
+            // LIKE is a coarse prefilter; hostMatches/expiry below apply the
+            // precise, anchored rules the SQL LIKE can't express safely.
+            let sql = "SELECT name, encrypted_value, host_key, expires_utc FROM cookies WHERE host_key LIKE ?;"
             var statement: OpaquePointer?
             guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else { return [] }
             defer { sqlite3_finalize(statement) }
             sqlite3_bind_text(statement, 1, "%\(domain)%", -1, sqliteTransient)
             while sqlite3_step(statement) == SQLITE_ROW {
-                guard let namePtr = sqlite3_column_text(statement, 0) else { continue }
+                guard let namePtr = sqlite3_column_text(statement, 0),
+                      let hostPtr = sqlite3_column_text(statement, 2) else { continue }
+                guard hostMatches(String(cString: hostPtr), domain: domain),
+                      isUnexpiredChromium(expiresUtc: sqlite3_column_int64(statement, 3), now: now) else { continue }
                 let name = String(cString: namePtr)
                 if let blob = sqlite3_column_blob(statement, 1) {
                     let length = Int(sqlite3_column_bytes(statement, 1))
@@ -129,14 +157,17 @@ public enum BrowserCookieImporter {
             guard FileManager.default.fileExists(atPath: db.path) else { continue }
             let cookies = readDatabaseCopy(dbPath: db.path) { handle -> [Cookie] in
                 var rows: [Cookie] = []
-                let sql = "SELECT name, value FROM moz_cookies WHERE host LIKE ?;"
+                let sql = "SELECT name, value, host, expiry FROM moz_cookies WHERE host LIKE ?;"
                 var statement: OpaquePointer?
                 guard sqlite3_prepare_v2(handle, sql, -1, &statement, nil) == SQLITE_OK else { return [] }
                 defer { sqlite3_finalize(statement) }
                 sqlite3_bind_text(statement, 1, "%\(domain)%", -1, sqliteTransient)
                 while sqlite3_step(statement) == SQLITE_ROW {
                     guard let namePtr = sqlite3_column_text(statement, 0),
-                          let valuePtr = sqlite3_column_text(statement, 1) else { continue }
+                          let valuePtr = sqlite3_column_text(statement, 1),
+                          let hostPtr = sqlite3_column_text(statement, 2) else { continue }
+                    guard hostMatches(String(cString: hostPtr), domain: domain),
+                          isUnexpiredFirefox(expiry: sqlite3_column_int64(statement, 3)) else { continue }
                     rows.append(Cookie(name: String(cString: namePtr), value: String(cString: valuePtr)))
                 }
                 return rows

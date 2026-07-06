@@ -78,8 +78,12 @@ enum RemoteJSON {
         return normalizePercent(raw)
     }
 
-    static func normalizePercent(_ raw: Double) -> Double {
-        min(max(raw, 0), 100)
+    static func normalizePercent(_ raw: Double) -> Double? {
+        // Reject non-finite input: a malformed payload can encode percent as
+        // "nan"/"inf", and a NaN survives min/max clamping (all comparisons
+        // are false), later trapping Int(percent.rounded()). Treat as no data.
+        guard raw.isFinite else { return nil }
+        return min(max(raw, 0), 100)
     }
 
     static func resetDate(in object: [String: Any], now: Date = Date()) -> Date? {
@@ -161,6 +165,10 @@ enum RemoteJSON {
     /// `AuthError.http(status)` so providers can map 401/403 to a sign-in
     /// state instead of a generic error. 4xx (except 408/429) never retries.
     private static func fetchData(_ request: URLRequest, session: URLSession = .shared, attempt: Int = 0) async throws -> Data {
+        // Bail before issuing a (or a retry) request if the enclosing refresh
+        // Task was cancelled/superseded, so a closed refresh never fires an
+        // extra network call.
+        try Task.checkCancellation()
         do {
             let (data, response) = try await session.data(for: request)
             guard let http = response as? HTTPURLResponse else { throw AuthError.parseFailed }

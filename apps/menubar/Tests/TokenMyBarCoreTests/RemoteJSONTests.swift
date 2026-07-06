@@ -60,3 +60,13 @@ import Testing
     #expect(RemoteJSON.percent(in: ["percent": 0.39]) == 0.39)
     #expect(RemoteJSON.percent(in: ["other": 1]) == nil)
 }
+
+@Test func percentRejectsNonFiniteValues() {
+    // A malformed payload can encode percent as "nan"/"inf" strings, which
+    // Double(_:) parses to a non-finite value. These must be treated as "no
+    // percent" (nil), never propagated — Int(nan.rounded()) would trap.
+    #expect(RemoteJSON.percent(in: ["usagePercent": "nan"]) == nil)
+    #expect(RemoteJSON.percent(in: ["utilization": "NaN"]) == nil)
+    #expect(RemoteJSON.percent(in: ["percent": "inf"]) == nil)
+    #expect(RemoteJSON.percent(in: ["used_percent": "-inf"]) == nil)
+}

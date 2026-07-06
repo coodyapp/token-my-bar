@@ -38,6 +38,29 @@ import Testing
     #expect(ClaudeOAuthUsageProvider.tokenFromKeychainPayload(["access_token": "flat"]) == "flat")
 }
 
+@Test func cookieHostMatchAnchorsToDomainAndSubdomains() {
+    #expect(BrowserCookieImporter.hostMatches("opencode.ai", domain: "opencode.ai"))
+    #expect(BrowserCookieImporter.hostMatches(".opencode.ai", domain: "opencode.ai"))
+    #expect(BrowserCookieImporter.hostMatches("app.opencode.ai", domain: "opencode.ai"))
+    // Look-alike domains must NOT match (would otherwise be sent to opencode.ai).
+    #expect(!BrowserCookieImporter.hostMatches("notopencode.ai", domain: "opencode.ai"))
+    #expect(!BrowserCookieImporter.hostMatches("myopencode.ai", domain: "opencode.ai"))
+    #expect(!BrowserCookieImporter.hostMatches("opencode.ai.attacker.com", domain: "opencode.ai"))
+}
+
+@Test func cookieExpiryKeepsSessionAndFutureDropsExpired() {
+    let now = Date(timeIntervalSince1970: 1_000_000)
+    // Chromium expires_utc is microseconds since 1601-01-01; 0 means a session cookie.
+    let nowMicros1601 = Int64((now.timeIntervalSince1970 + 11_644_473_600) * 1_000_000)
+    #expect(BrowserCookieImporter.isUnexpiredChromium(expiresUtc: 0, now: now))
+    #expect(BrowserCookieImporter.isUnexpiredChromium(expiresUtc: nowMicros1601 + 1_000_000, now: now))
+    #expect(!BrowserCookieImporter.isUnexpiredChromium(expiresUtc: nowMicros1601 - 1_000_000, now: now))
+    // Firefox expiry is Unix seconds; 0 means a session cookie.
+    #expect(BrowserCookieImporter.isUnexpiredFirefox(expiry: 0, now: now))
+    #expect(BrowserCookieImporter.isUnexpiredFirefox(expiry: 1_000_500, now: now))
+    #expect(!BrowserCookieImporter.isUnexpiredFirefox(expiry: 999_999, now: now))
+}
+
 @Test func opencodeParsesWorkspaceIDsInOrder() {
     let text = #"[$R[1]={id:"wrk_01AAA",name:"Coody"},$R[2]={id:"wrk_01BBB",name:"Augusto"}]"#
     #expect(OpenCodeCookieUsageProvider.workspaceIDs(in: text) == ["wrk_01AAA", "wrk_01BBB"])

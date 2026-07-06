@@ -121,7 +121,7 @@ public struct ClaudeOAuthUsageProvider: ProviderClient {
         let file = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude/.credentials.json")
         if let data = try? Data(contentsOf: file),
            let object = try? JSONSerialization.jsonObject(with: data),
-           let token = RemoteJSON.findString(in: object, keys: ["access_token", "accessToken"]) {
+           let token = tokenFromKeychainPayload(object) {
             return StoredCredentials(token: token, planName: planFromKeychainPayload(object))
         }
 

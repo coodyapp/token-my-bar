@@ -41,27 +41,38 @@ enum Keychain {
     /// on `kSecMatchLimitOne` returning an arbitrary match when several exist.
     ///
     /// `SecItemCopyMatching` rejects `kSecMatchLimitAll` combined with
-    /// `kSecReturnData` (errSecParam), so this enumerates item attributes
-    /// first and then fetches each item's secret individually — which also
-    /// lets the OS show its consent prompt per item.
+    /// `kSecReturnData` (errSecParam), so this enumerates persistent references
+    /// first and then fetches each item's secret by its unique reference —
+    /// which also lets the OS show its consent prompt per item.
+    ///
+    /// Persistent refs (not `(service, account)` re-queries) are used so that
+    /// several items sharing the same service *and* account — e.g. iCloud-synced
+    /// duplicates — resolve to distinct secrets instead of collapsing to the
+    /// first match `kSecMatchLimitOne` happens to return.
     static func genericPasswords(service: String) -> [Data] {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecReturnAttributes as String: true,
+            kSecReturnPersistentRef as String: true,
             kSecMatchLimit as String: kSecMatchLimitAll,
         ]
 
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
-        guard status == errSecSuccess, let attributes = item as? [[String: Any]] else {
-            // Attribute enumeration unavailable — fall back to the single-item
-            // path so one readable credential still works.
+        guard status == errSecSuccess, let refs = item as? [Data] else {
+            // Enumeration unavailable — fall back to the single-item path so one
+            // readable credential still works.
             return genericPassword(service: service).map { [$0] } ?? []
         }
 
-        return attributes.compactMap { attribute in
-            genericPassword(service: service, account: attribute[kSecAttrAccount as String] as? String)
+        return refs.compactMap { ref in
+            let refQuery: [String: Any] = [
+                kSecValuePersistentRef as String: ref,
+                kSecReturnData as String: true,
+            ]
+            var data: CFTypeRef?
+            guard SecItemCopyMatching(refQuery as CFDictionary, &data) == errSecSuccess else { return nil }
+            return data as? Data
         }
     }
 }
