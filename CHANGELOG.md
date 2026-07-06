@@ -6,6 +6,25 @@ All notable changes to TokenMyBar are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.7] - 2026-07-06
+
+### Fixed
+
+- Packaging: unsigned release builds now ad-hoc sign the entire app bundle.
+  Previously only the executable carried the linker's ad-hoc signature, so
+  Gatekeeper saw a broken bundle seal and reported quarantined installs
+  (Homebrew or direct DMG download) as "damaged" ("Aplicativo está
+  danificado") with no bypass. With a valid seal, macOS shows the standard
+  unverified-developer flow with System Settings → Privacy & Security →
+  Open Anyway.
+
+### Changed
+
+- Installation docs and Homebrew cask caveats now recommend installing with
+  `--no-quarantine` or clearing the quarantine attribute with `xattr`,
+  replacing the right-click → Open advice that does not work for these
+  Gatekeeper verdicts.
+
 ## [1.0.6] - 2026-07-06
 
 ### Fixed
