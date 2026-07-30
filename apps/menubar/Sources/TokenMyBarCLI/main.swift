@@ -43,16 +43,12 @@ struct Status: AsyncParsableCommand {
     func run() async throws {
         let config = AppConfig.load()
         let refresher = UsageRefresher()
-        let snapshots: [ProviderSnapshot]
-
-        let cached = await refresher.cached()
-        if refresh {
-            snapshots = await refresher.refresh(ttl: 0)
-        } else if !cached.isEmpty {
-            snapshots = cached
-        } else {
-            snapshots = await refresher.refresh(ttl: config.refreshTTL)
-        }
+        // Always go through refresh: it returns the cache untouched while it is
+        // younger than the TTL, so honoring `refresh.ttl_seconds` costs nothing on
+        // a warm cache. Reading the cache directly instead made every invocation
+        // after the first serve whatever was on disk, forever — a status bar
+        // polling this printed weeks-old numbers labelled "ok".
+        let snapshots = await refresher.refresh(ttl: refresh ? 0 : config.refreshTTL)
 
         let status = CombinedStatusFormatter.format(snapshots, primary: config.primaryVendor)
 
