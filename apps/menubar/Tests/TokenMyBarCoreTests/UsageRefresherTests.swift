@@ -120,6 +120,35 @@ private func tempSnapshotURL() -> URL {
     #expect(result.first?.usagePercent == 11)
 }
 
+@Test func refreshHidesDisabledVendorsOnEveryReturnPath() async throws {
+    let url = tempSnapshotURL()
+    defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+
+    // The shared cache deliberately keeps every vendor's last-good data, so each
+    // early return has to apply the enabled filter — otherwise a vendor the user
+    // disabled reappears in the menu bar whenever the cache is reused.
+    let store = SnapshotStore(fileURL: url)
+    try await store.save([
+        ProviderSnapshot(providerID: .codex, status: .ok, usedTokens: nil, usagePercent: 11, primarySource: .oauth, confidence: .high, isEstimated: false),
+        ProviderSnapshot(providerID: .opencode, status: .ok, usedTokens: nil, usagePercent: 22, primarySource: .oauth, confidence: .high, isEstimated: false),
+    ])
+    let refresher = UsageRefresher(
+        registry: ProviderRegistry(providers: [FixedProvider(percent: 77)]),
+        store: store
+    )
+
+    let fromFreshCache = await refresher.refresh(enabled: [.codex], ttl: 3600)
+    #expect(fromFreshCache.map(\.providerID) == [.codex])
+
+    let fromCachedAccessor = await refresher.cached(enabled: [.codex])
+    #expect(fromCachedAccessor.map(\.providerID) == [.codex])
+
+    #expect(await store.tryBeginRefresh())
+    let fromLockContention = await refresher.refresh(enabled: [.codex], ttl: 0)
+    await store.endRefresh()
+    #expect(fromLockContention.map(\.providerID) == [.codex])
+}
+
 @Test func refreshReturnsCacheWhenAnotherInstanceHoldsLock() async throws {
     let url = tempSnapshotURL()
     defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }

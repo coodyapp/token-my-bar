@@ -7,7 +7,7 @@ public struct OpenCodeCookieUsageProvider: ProviderClient {
 
     public func snapshot() async -> ProviderSnapshot {
         do {
-            let cookie = try Self.cookieHeader()
+            let cookie = try await BlockingIO.run { try Self.cookieHeader() }
             let workspaceIDs = try await Self.workspaceIDs(cookie: cookie)
             var lastError: Error?
             for workspaceID in workspaceIDs {
@@ -81,6 +81,8 @@ public struct OpenCodeCookieUsageProvider: ProviderClient {
         )
     }
 
+    /// Reads browser cookie stores and the Keychain, both of which block on user
+    /// consent prompts: call it through `BlockingIO`.
     static func cookieHeader() throws -> String {
         if let cookie = ProcessInfo.processInfo.environment["TOKEN_MY_BAR_OPENCODE_COOKIE"], !cookie.isEmpty {
             return cookie.hasPrefix("Cookie:") ? String(cookie.dropFirst("Cookie:".count)).trimmingCharacters(in: .whitespaces) : cookie
