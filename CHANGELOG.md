@@ -6,6 +6,82 @@ All notable changes to TokenMyBar are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.9] - 2026-07-30
+
+### Fixed
+
+- `token-my-bar status` and `--json` served whatever was in the cache forever:
+  after the first run they never checked the cache's age, so a status bar polling
+  the CLI could print weeks-old usage labelled "ok" — a 23-day-old reading with an
+  expired reset countdown was reproduced — and `refresh.ttl_seconds` had no effect
+  unless the cache file was deleted by hand.
+- The on-disk cache could freeze at pre-failure numbers while the app displayed
+  current ones, so the app and the CLI disagreed indefinitely. Display and
+  persistence now come from a single decision per vendor, which is what let them
+  drift apart in the first place: what is written is what is shown.
+- Cached numbers re-shown after a failed refresh were stamped with the current
+  time, so the popover said "Updated just now" and `updated_at` reported now for
+  readings that could be days old. They now keep the time they were taken.
+- A vendor whose refresh failed was recorded in the cache as healthy, so
+  `token-my-bar --json` reported `"status": "ok"` with class `normal` — and the
+  next app launch showed a green "OK" — for numbers that could not be refreshed.
+  The cache now carries the same "stale" or "sign in" state the app shows.
+- Uninstall docs pointed at `~/Library/Application Support/TokenMyBar`, a
+  directory the app never creates, so `rm -rf` reported success while the real
+  cache under `token-my-bar/` survived.
+- Local Claude usage was counted about twice over. Claude Code writes one log
+  record per assistant content block, each repeating the same message id and the
+  same cumulative usage under a fresh `uuid`; deduping on the `uuid` let those
+  repeats through. Measured on a real 198-file log directory, weekly local usage
+  dropped from 2,830,836 to the true 1,357,574 tokens.
+- A log line carrying a token count beyond `Int.max` (`1e300`, a 20-digit
+  integer) crashed the app on launch and on every refresh until the file was
+  deleted by hand. Token counts are now clamped and accumulated without
+  trapping, and one unreadable or since-deleted log no longer aborts the whole
+  scan and reports "Local logs not found".
+- Vendors disabled in Settings no longer reappear in the menu bar and popover
+  when a refresh reuses the shared cache (fresh-cache path, lock contention, and
+  the startup cache read).
+- Expired Claude authentication is no longer masked as merely "Stale" data — the
+  popover says to sign in again while the last-known percent stays in the menu
+  bar — and a failed refresh that still carries current local numbers is no
+  longer replaced by older cached numbers.
+- A vendor that cannot report a percent (expired auth, failed fetch) no longer
+  disappears from the menu bar without a trace while other vendors keep showing
+  numbers; it is flagged with a warning glyph instead.
+- Local providers no longer emit rows of zeros when they find no usage, which
+  had them counted as real data and displacing good cached numbers.
+- The popover header read "Updated in 0 sec" — a time in the future — after
+  every refresh; it now says "Updated just now".
+- When a vendor has no usage to show, its reason ("Codex OAuth usage failed
+  (HTTP 500)") was truncated mid-sentence next to an empty progress meter and a
+  repeat of the vendor name. The message now gets the full width, and the
+  meaningless meter is gone.
+- Browser cookie import worked only while the browser was closed: a running
+  browser keeps committed cookies in its SQLite write-ahead log, which the
+  read-only copy of the main database file alone could not open.
+- A blocking macOS Keychain consent prompt can no longer starve the concurrency
+  pool and stall every vendor refresh.
+- "Every 1 minute" refresh no longer degrades to a 2-3 minute cadence from the
+  120s cache TTL, and refresh-lock races no longer overwrite newer cached data.
+- "Hide labels when space is limited" now takes effect (its threshold could
+  never be met), Settings reopens with the real Launch at Login state, and a
+  first launch shows a loading state instead of "No active vendors".
+
+### Changed
+
+- Dev tooling: the popover snapshot renderer takes `TMB_SNAPSHOT_STATE=ok |
+  degraded | loading | empty`, so the states users are most likely to be
+  confused by can be eyeballed before a release instead of only the happy path.
+- Website: the install command is the checksum-verifying install script (the
+  advertised Homebrew tap command no longer worked), link previews use a real
+  1200x630 social card, and the animated CTA and border trail respect
+  `prefers-reduced-motion`.
+- `install.sh` detects Apple Silicon from the hardware, so running it under
+  Rosetta 2 no longer aborts on a supported Mac.
+- Website deploys now run on manual dispatch and on `main` pushes that touch
+  `apps/www`, instead of only on release tags.
+
 ## [1.0.8] - 2026-07-06
 
 ### Added
@@ -212,6 +288,14 @@ First stable release.
   cache files are `0600`. Keychain access is read-only behind the standard
   macOS consent prompt. All SQLite access uses parameterized queries.
 
-[Unreleased]: https://github.com/coodyapp/token-my-bar/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/coodyapp/token-my-bar/compare/v1.0.9...HEAD
+[1.0.9]: https://github.com/coodyapp/token-my-bar/compare/v1.0.8...v1.0.9
+[1.0.8]: https://github.com/coodyapp/token-my-bar/compare/v1.0.7...v1.0.8
+[1.0.7]: https://github.com/coodyapp/token-my-bar/compare/v1.0.6...v1.0.7
+[1.0.6]: https://github.com/coodyapp/token-my-bar/compare/v1.0.5...v1.0.6
+[1.0.5]: https://github.com/coodyapp/token-my-bar/compare/v1.0.4...v1.0.5
+[1.0.4]: https://github.com/coodyapp/token-my-bar/compare/v1.0.3...v1.0.4
+[1.0.3]: https://github.com/coodyapp/token-my-bar/compare/v1.0.2...v1.0.3
+[1.0.2]: https://github.com/coodyapp/token-my-bar/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/coodyapp/token-my-bar/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/coodyapp/token-my-bar/releases/tag/v1.0.0
