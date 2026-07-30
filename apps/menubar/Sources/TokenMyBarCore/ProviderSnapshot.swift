@@ -195,18 +195,29 @@ public struct ProviderSnapshot: Codable, Equatable, Sendable, Identifiable {
         self.usageRows = usageRows
     }
 
-    public func staleCopy(message: String? = nil, refreshedAt: Date = Date()) -> ProviderSnapshot {
+    /// Cached data re-presented as the current view. `status` overrides the
+    /// default so a state the user must act on (expired auth) is not flattened
+    /// into "stale", which reads as merely out of date.
+    ///
+    /// `refreshedAt` defaults to the time this reading was actually taken:
+    /// restamping it to now would tell the user — and every consumer of the
+    /// `updated_at` field — that days-old numbers are current.
+    public func staleCopy(
+        status: ProviderStatus = .stale,
+        message: String? = nil,
+        refreshedAt: Date? = nil
+    ) -> ProviderSnapshot {
         ProviderSnapshot(
             providerID: providerID,
             displayName: displayName,
-            status: .stale,
+            status: status,
             usedTokens: usedTokens,
             limitTokens: limitTokens,
             unit: unit,
             usagePercent: usagePercent,
             windowName: windowName,
             resetAt: resetAt,
-            refreshedAt: refreshedAt,
+            refreshedAt: refreshedAt ?? self.refreshedAt,
             primarySource: primarySource,
             sources: sources,
             confidence: confidence,

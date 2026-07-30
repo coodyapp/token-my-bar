@@ -19,6 +19,10 @@ import Testing
         usageRows: [UsageRow(key: "session", title: "Session", value: "47%", percent: 47)]
     )
 
+    // By default the copy keeps the time the reading was taken; restamping it to
+    // now would present days-old cached numbers as current.
+    #expect(original.staleCopy().refreshedAt == original.refreshedAt)
+
     let when = Date(timeIntervalSince1970: 5000)
     let stale = original.staleCopy(refreshedAt: when)
 
