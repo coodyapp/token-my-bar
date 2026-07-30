@@ -17,7 +17,8 @@ describe("Hero", () => {
       screen.getByText(
         (_, element) =>
           element?.tagName === "CODE" &&
-          element.textContent === "brew install --cask token-my-bar"
+          element.textContent ===
+            "curl -fsSL https://raw.githubusercontent.com/coodyapp/token-my-bar/main/install.sh | bash"
       )
     ).toBeInTheDocument()
   })
@@ -35,7 +36,7 @@ describe("Hero", () => {
 
     await waitFor(() =>
       expect(writeText).toHaveBeenCalledWith(
-        expect.stringContaining("brew install --cask token-my-bar")
+        expect.stringContaining("install.sh | bash")
       )
     )
     await waitFor(() =>
