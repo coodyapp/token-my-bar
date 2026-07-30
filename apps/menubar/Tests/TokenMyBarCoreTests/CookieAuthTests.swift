@@ -1,3 +1,4 @@
+import CSQLite3
 import Foundation
 import Testing
 @testable import TokenMyBarCore
@@ -59,6 +60,45 @@ import Testing
     #expect(BrowserCookieImporter.isUnexpiredFirefox(expiry: 0, now: now))
     #expect(BrowserCookieImporter.isUnexpiredFirefox(expiry: 1_000_500, now: now))
     #expect(!BrowserCookieImporter.isUnexpiredFirefox(expiry: 999_999, now: now))
+}
+
+@Test func cookieImporterReadsStoresWithAnUncheckpointedWAL() throws {
+    // A running browser holds its cookie store in WAL mode with committed rows
+    // still in the `-wal` file. Copying only the main database therefore reads a
+    // store that looks empty — the import returns nothing while the browser runs.
+    let fixture = FileManager.default.temporaryDirectory
+        .appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let profiles = fixture.appendingPathComponent("Profiles", isDirectory: true)
+    let profile = profiles.appendingPathComponent("test.default", isDirectory: true)
+    try FileManager.default.createDirectory(at: profile, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: fixture) }
+
+    // The connection stays open while copying, so SQLite cannot checkpoint the
+    // WAL away and the fixture reproduces a live browser's on-disk state.
+    let source = fixture.appendingPathComponent("source.sqlite")
+    var writer: OpaquePointer?
+    try #require(sqlite3_open(source.path, &writer) == SQLITE_OK)
+    defer { sqlite3_close(writer) }
+    for sql in [
+        "PRAGMA journal_mode=WAL;",
+        "CREATE TABLE moz_cookies (name TEXT, value TEXT, host TEXT, expiry INTEGER);",
+        "INSERT INTO moz_cookies VALUES ('session', 'abc123', '.opencode.ai', 0);",
+    ] {
+        try #require(sqlite3_exec(writer, sql, nil, nil, nil) == SQLITE_OK)
+    }
+
+    let db = profile.appendingPathComponent("cookies.sqlite")
+    try #require(FileManager.default.fileExists(atPath: source.path + "-wal"))
+    for suffix in ["", "-wal", "-shm"] where FileManager.default.fileExists(atPath: source.path + suffix) {
+        try FileManager.default.copyItem(
+            at: URL(fileURLWithPath: source.path + suffix),
+            to: URL(fileURLWithPath: db.path + suffix)
+        )
+    }
+
+    let cookies = BrowserCookieImporter.firefoxCookies(domain: "opencode.ai", profiles: profiles)
+
+    #expect(cookies == [BrowserCookieImporter.Cookie(name: "session", value: "abc123")])
 }
 
 @Test func opencodeParsesWorkspaceIDsInOrder() {
