@@ -24,7 +24,10 @@ fail() {
 }
 
 [[ "$(uname -s)" == "Darwin" ]] || fail "$APP_NAME only runs on macOS."
-[[ "$(uname -m)" == "arm64" ]] || fail "$APP_NAME requires Apple Silicon."
+# `uname -m` reports the process arch (x86_64 under Rosetta 2), so probe the
+# hardware; the sysctl key is absent on Intel Macs.
+[[ "$(sysctl -n hw.optional.arm64 2>/dev/null)" == "1" ]] ||
+  fail "$APP_NAME requires Apple Silicon."
 
 version="${1:-}"
 if [[ -z "$version" ]]; then

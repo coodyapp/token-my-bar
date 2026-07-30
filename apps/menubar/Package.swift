@@ -40,5 +40,5 @@ let package = Package(
             ]),
         .testTarget(
             name: "TokenMyBarCoreTests",
-            dependencies: ["TokenMyBarCore"]),
+            dependencies: ["TokenMyBarCore", "CSQLite3"]),
     ])

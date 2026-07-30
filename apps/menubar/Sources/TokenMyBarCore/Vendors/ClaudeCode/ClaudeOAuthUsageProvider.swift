@@ -7,7 +7,7 @@ public struct ClaudeOAuthUsageProvider: ProviderClient {
 
     public func snapshot() async -> ProviderSnapshot {
         do {
-            let credentials = try Self.storedCredentials()
+            let credentials = try await BlockingIO.run { try Self.storedCredentials() }
             var request = RemoteJSON.request(url: "https://api.anthropic.com/api/oauth/usage")
             request.setValue("Bearer \(credentials.token)", forHTTPHeaderField: "Authorization")
             request.setValue("oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
@@ -104,7 +104,7 @@ public struct ClaudeOAuthUsageProvider: ProviderClient {
         return nil
     }
 
-    struct StoredCredentials {
+    struct StoredCredentials: Sendable {
         let token: String
         let planName: String?
     }
@@ -116,7 +116,8 @@ public struct ClaudeOAuthUsageProvider: ProviderClient {
     /// 2. macOS Keychain item `Claude Code-credentials` written by Claude Code,
     ///    where the token lives under `claudeAiOauth.accessToken`.
     ///
-    /// Reading the Keychain item is an explicit, OS-prompted user action.
+    /// Reading the Keychain item is an explicit, OS-prompted user action, so this
+    /// blocks until the user answers: call it through `BlockingIO`.
     static func storedCredentials() throws -> StoredCredentials {
         let file = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claude/.credentials.json")
         if let data = try? Data(contentsOf: file),

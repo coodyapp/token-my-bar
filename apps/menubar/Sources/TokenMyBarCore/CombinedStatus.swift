@@ -11,12 +11,17 @@ public struct CombinedStatus: Equatable, Sendable {
 }
 
 public enum CombinedStatusFormatter {
-    /// Filters to vendors with a usable (ok/stale) snapshot and, when a primary
+    /// Filters to vendors whose numbers are worth showing and, when a primary
     /// vendor is configured and present, moves it to the front. Shared by the
     /// CLI's combined status and the menu bar title so both follow one
     /// resolution order instead of two hand-kept copies.
+    ///
+    /// `.unauthenticated` counts as usable because such a snapshot still carries
+    /// the last-known percent; dropping it would silently remove the vendor from
+    /// the title while the popover keeps showing it. Callers still discard
+    /// snapshots without a percent, so no vendor is shown with nothing to say.
     public static func orderedUsableSnapshots(_ snapshots: [ProviderSnapshot], primary: ProviderID?) -> [ProviderSnapshot] {
-        let usable = snapshots.filter { $0.status == .ok || $0.status == .stale }
+        let usable = snapshots.filter { $0.status == .ok || $0.status == .stale || $0.status == .unauthenticated }
         guard let primary, let primarySnapshot = usable.first(where: { $0.providerID == primary }) else {
             return usable
         }

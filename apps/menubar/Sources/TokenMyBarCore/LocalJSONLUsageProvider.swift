@@ -15,7 +15,7 @@ public struct LocalJSONLUsage: Equatable, Sendable {
     public let lastUpdatedAt: Date?
 
     public var totalTokens: Int {
-        inputTokens + outputTokens + reasoningTokens + cacheReadTokens + cacheWriteTokens + totalFallbackTokens
+        clampedSum(inputTokens, outputTokens, reasoningTokens, cacheReadTokens, cacheWriteTokens, totalFallbackTokens)
     }
 
     public var primaryTokens: Int {
@@ -88,7 +88,9 @@ public struct LocalJSONLUsageProvider: ProviderClient {
                     ? "Local samples: \(usage.sampleCount)"
                     : "Local logs found, but no token usage yet",
                 authSummary: authSummary,
-                usageRows: usage.rows(for: providerID)
+                // Rows of zeros would read as real data downstream and displace
+                // good cached numbers, so an empty scan reports nothing at all.
+                usageRows: usage.totalTokens > 0 ? usage.rows(for: providerID) : []
             )
         } catch {
             return ProviderSnapshot(
@@ -105,7 +107,7 @@ public struct LocalJSONLUsageProvider: ProviderClient {
     }
 
     public func scanUsage(now: Date = Date()) throws -> LocalJSONLUsage {
-        let files = try discoverJSONLFiles(now: now)
+        let files = discoverJSONLFiles(now: now)
         guard !files.isEmpty else { throw CocoaError(.fileNoSuchFile) }
 
         var totals = MutableUsageTotals()
@@ -116,7 +118,9 @@ public struct LocalJSONLUsageProvider: ProviderClient {
             if let modified = try? file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate {
                 lastUpdatedAt = maxDate(lastUpdatedAt, modified)
             }
-            try scanFile(file, totals: &totals, seenIDs: &seenIDs, now: now)
+            // One unreadable or since-deleted log must not sink the whole scan
+            // and report "Local logs not found" over hundreds of valid files.
+            try? scanFile(file, totals: &totals, seenIDs: &seenIDs, now: now)
         }
 
         return LocalJSONLUsage(
@@ -139,13 +143,13 @@ public struct LocalJSONLUsageProvider: ProviderClient {
     /// modified within the 7-day weekly window (so the weekly total is never
     /// silently truncated by `maxFiles`) and capping only files older than
     /// that window, which can no longer affect session or weekly totals.
-    private func discoverJSONLFiles(now: Date = Date()) throws -> [URL] {
+    private func discoverJSONLFiles(now: Date = Date()) -> [URL] {
         var files: [(url: URL, modified: Date)] = []
         let keys: Set<URLResourceKey> = [.isRegularFileKey, .contentModificationDateKey, .fileSizeKey]
 
         for root in roots where FileManager.default.fileExists(atPath: root.path) {
             if root.pathExtension == "jsonl" {
-                let values = try root.resourceValues(forKeys: keys)
+                guard let values = try? root.resourceValues(forKeys: keys) else { continue }
                 if values.isRegularFile == true, UInt64(values.fileSize ?? 0) <= maxFileBytes {
                     files.append((root, values.contentModificationDate ?? .distantPast))
                 }
@@ -159,8 +163,8 @@ public struct LocalJSONLUsageProvider: ProviderClient {
             ) else { continue }
 
             for case let file as URL in enumerator where file.pathExtension == "jsonl" {
-                let values = try file.resourceValues(forKeys: keys)
-                guard values.isRegularFile == true,
+                guard let values = try? file.resourceValues(forKeys: keys),
+                      values.isRegularFile == true,
                       UInt64(values.fileSize ?? 0) <= maxFileBytes
                 else { continue }
                 files.append((file, values.contentModificationDate ?? .distantPast))
@@ -240,10 +244,14 @@ public struct LocalJSONLUsageProvider: ProviderClient {
         return nil
     }
 
+    /// Claude Code writes one record per assistant content block, each repeating
+    /// the same `message.id` and the same *cumulative* usage under a fresh
+    /// top-level `uuid`. The message id therefore has to win, or those repeats
+    /// slip past the dedupe and inflate every total.
     private static func messageID(in object: [String: Any]) -> String? {
-        if let id = object["uuid"] as? String { return id }
-        if let id = object["id"] as? String { return id }
         if let message = object["message"] as? [String: Any], let id = message["id"] as? String { return id }
+        if let id = object["id"] as? String { return id }
+        if let id = object["uuid"] as? String { return id }
         return nil
     }
 
@@ -282,14 +290,24 @@ public struct LocalJSONLUsageProvider: ProviderClient {
         )
     }
 
+    /// Upper bound for a single token count. Logs in the scanned directories are
+    /// also written by third-party tools, so a corrupt value (`1e300`, a 20-digit
+    /// integer, a negative) must neither trap `Int(_:)` nor overflow the totals.
+    static let maxTokenValue = 1_000_000_000_000
+
     private static func intValue(_ object: [String: Any], keys: [String]) -> Int {
         for key in keys {
-            if let value = object[key] as? Int { return value }
-            if let value = object[key] as? Int64 { return Int(value) }
-            if let value = object[key] as? Double { return Int(value) }
-            if let value = object[key] as? String, let parsed = Int(value) { return parsed }
+            if let value = object[key] as? Int { return clampTokens(Double(value)) }
+            if let value = object[key] as? Int64 { return clampTokens(Double(value)) }
+            if let value = object[key] as? Double { return clampTokens(value) }
+            if let value = object[key] as? String, let parsed = Double(value) { return clampTokens(parsed) }
         }
         return 0
+    }
+
+    private static func clampTokens(_ value: Double) -> Int {
+        guard value.isFinite, value > 0 else { return 0 }
+        return value >= Double(maxTokenValue) ? maxTokenValue : Int(value)
     }
 }
 
@@ -307,18 +325,18 @@ private struct MutableUsageTotals {
 
     mutating func add(_ usage: ParsedUsage, timestamp: Date?, model: String?, now: Date) {
         let total = usage.primary
-        input += usage.input
-        output += usage.output
-        reasoning += usage.reasoning
-        cacheRead += usage.cacheRead
-        cacheWrite += usage.cacheWrite
-        totalFallback += usage.totalFallback
+        input.clampedAdd(usage.input)
+        output.clampedAdd(usage.output)
+        reasoning.clampedAdd(usage.reasoning)
+        cacheRead.clampedAdd(usage.cacheRead)
+        cacheWrite.clampedAdd(usage.cacheWrite)
+        totalFallback.clampedAdd(usage.totalFallback)
         if let timestamp {
-            if timestamp >= now.addingTimeInterval(-5 * 60 * 60) { session += total }
-            if timestamp >= now.addingTimeInterval(-7 * 24 * 60 * 60) { weekly += total }
+            if timestamp >= now.addingTimeInterval(-5 * 60 * 60) { session.clampedAdd(total) }
+            if timestamp >= now.addingTimeInterval(-7 * 24 * 60 * 60) { weekly.clampedAdd(total) }
         }
         if model?.localizedCaseInsensitiveContains("sonnet") == true {
-            sonnet += total
+            sonnet.clampedAdd(total)
         }
         samples += 1
     }
@@ -333,17 +351,32 @@ private struct ParsedUsage {
     let totalFallback: Int
 
     var total: Int {
-        let componentTotal = input + output + reasoning + cacheRead + cacheWrite
+        let componentTotal = clampedSum(input, output, reasoning, cacheRead, cacheWrite)
         return componentTotal > 0 ? componentTotal : totalFallback
     }
 
     var primary: Int {
-        let primaryTotal = input + output + reasoning
+        let primaryTotal = clampedSum(input, output, reasoning)
         return primaryTotal > 0 ? primaryTotal : totalFallback
     }
 
     var isZero: Bool {
-        input + output + reasoning + cacheRead + cacheWrite + totalFallback == 0
+        input == 0 && output == 0 && reasoning == 0 && cacheRead == 0 && cacheWrite == 0 && totalFallback == 0
+    }
+}
+
+/// Saturating sum: per-value clamping alone still leaves the running totals able
+/// to overflow across a very large corrupt log, and an overflow here traps.
+private func clampedSum(_ values: Int...) -> Int {
+    values.reduce(0) { partial, value in
+        let (sum, overflow) = partial.addingReportingOverflow(value)
+        return overflow ? .max : sum
+    }
+}
+
+private extension Int {
+    mutating func clampedAdd(_ value: Int) {
+        self = clampedSum(self, value)
     }
 }
 
@@ -385,7 +418,7 @@ extension LocalJSONLUsage {
             key: "cache-reasoning",
             title: "Cache + reasoning",
             subtitle: "All time, not windowed like Session/Weekly",
-            value: Format.count(cacheReadTokens + cacheWriteTokens + reasoningTokens),
+            value: Format.count(clampedSum(cacheReadTokens, cacheWriteTokens, reasoningTokens)),
             unit: .tokens
         ))
 

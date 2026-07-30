@@ -77,4 +77,4 @@ and [privacy.md](privacy.md) for exactly what is read and stored.
 
 1. Quit TokenMyBar from the menu bar popover.
 2. Delete `/Applications/TokenMyBar.app` (or `brew uninstall --cask token-my-bar`).
-3. Optionally remove the snapshot cache: `rm -rf ~/Library/Application\ Support/TokenMyBar`.
+3. Optionally remove the snapshot cache: `rm -rf ~/Library/Application\ Support/token-my-bar`.

@@ -9,6 +9,9 @@ import Foundation
 ///      merge with the previous cache, and persist atomically.
 ///    - lock unavailable (another instance is refreshing) → return the cache.
 ///
+/// Every return path is filtered to the caller's enabled vendors, because the
+/// shared cache keeps vendors this instance did not refresh.
+///
 /// This lets multiple Waybar instances across monitors share one refresh and
 /// avoid API stampedes.
 public actor UsageRefresher {
@@ -26,8 +29,8 @@ public actor UsageRefresher {
         self.providerTimeout = providerTimeout
     }
 
-    public func cached() async -> [ProviderSnapshot] {
-        (try? await store.load()) ?? []
+    public func cached(enabled: [ProviderID]? = nil) async -> [ProviderSnapshot] {
+        Self.visible((try? await store.load()) ?? [], enabled: enabled)
     }
 
     @discardableResult
@@ -37,23 +40,33 @@ public actor UsageRefresher {
         now: Date = Date()
     ) async -> [ProviderSnapshot] {
         if let fresh = await store.loadIfFresh(ttl: ttl, now: now) {
-            return fresh
+            return Self.visible(fresh, enabled: enabled)
         }
 
         let enabledIDs = enabled ?? ProviderID.allCases
         let providers = registry.providers.filter { enabledIDs.contains($0.providerID) }
-        let previous = (try? await store.load()) ?? []
 
         // Single-flight across processes: only the lock holder fetches.
         guard await store.tryBeginRefresh() else {
             Log.refresh.debug("refresh skipped: another instance holds the lock")
-            return previous
+            return await cached(enabled: enabled)
         }
+        // Read the merge baseline under the lock: a racing instance may have
+        // persisted newer snapshots since this call started, and merging against
+        // a pre-lock copy would write that newer data back out regressed.
+        let previous = (try? await store.load()) ?? []
         // Release the lock synchronously before returning (no detached Task, so
         // the lock is always freed by the time refresh() returns).
         let merged = await fetchAndMerge(providers: providers, previous: previous, ttl: ttl, now: now)
         await store.endRefresh()
-        return merged
+        return Self.visible(merged, enabled: enabled)
+    }
+
+    /// The cache intentionally retains vendors this refresh did not touch, so
+    /// every path that hands snapshots to a caller filters to what is enabled.
+    private static func visible(_ snapshots: [ProviderSnapshot], enabled: [ProviderID]?) -> [ProviderSnapshot] {
+        guard let enabled else { return snapshots }
+        return snapshots.filter { enabled.contains($0.providerID) }
     }
 
     /// Runs under the refresh lock: re-checks freshness, fetches enabled
@@ -68,7 +81,7 @@ public actor UsageRefresher {
             return fresh
         }
 
-        let unordered = await withTaskGroup(of: ProviderSnapshot.self) { group in
+        let results = await withTaskGroup(of: ProviderSnapshot.self) { group in
             for provider in providers {
                 group.addTask { await self.snapshot(for: provider) }
             }
@@ -79,21 +92,14 @@ public actor UsageRefresher {
             return collected
         }
 
-        // Task-group completion order is a network race, not a stable order;
-        // callers (CLI --json/--verbose, menu bar popover) need one fixed
-        // vendor order across runs instead of one that shuffles per refresh.
-        let order = Dictionary(uniqueKeysWithValues: ProviderID.allCases.enumerated().map { ($1, $0) })
-        let results = unordered.sorted { (order[$0.providerID] ?? .max) < (order[$1.providerID] ?? .max) }
-
         for snapshot in results where snapshot.status != .ok {
             Log.provider.notice("\(snapshot.providerID.rawValue) refresh returned \(snapshot.status.rawValue)")
         }
 
-        let merged = SnapshotMerger.merge(fresh: results, cached: previous)
-        let toSave = SnapshotMerger.snapshotsToSave(merged: merged, cached: previous)
-        try? await store.save(toSave)
-        Log.refresh.info("refresh complete: \(merged.count) vendors")
-        return merged
+        let resolution = SnapshotMerger.resolve(fresh: results, cached: previous)
+        try? await store.save(resolution.persist)
+        Log.refresh.info("refresh complete: \(resolution.display.count) vendors")
+        return resolution.display
     }
 
     private func snapshot(for provider: any ProviderClient) async -> ProviderSnapshot {

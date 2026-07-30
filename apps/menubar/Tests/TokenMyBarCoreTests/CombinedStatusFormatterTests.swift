@@ -60,6 +60,44 @@ import Testing
     #expect(status.title == "--")
 }
 
+@Test func combinedStatusKeepsCachedPercentWhenAuthExpires() {
+    // Expired auth keeps its own status so the popover can say "sign in", but the
+    // cached percent it still carries must stay in the menu bar and CLI title
+    // rather than dropping the vendor without a trace.
+    let snapshots = [
+        ProviderSnapshot(
+            providerID: .claudeCode,
+            status: .unauthenticated,
+            usedTokens: nil,
+            usagePercent: 42,
+            primarySource: .oauth,
+            confidence: .high,
+            isEstimated: false
+        ),
+    ]
+
+    let status = CombinedStatusFormatter.format(snapshots)
+
+    #expect(status.title == "42%")
+    #expect(status.snapshot?.providerID == .claudeCode)
+}
+
+@Test func combinedStatusStillDropsVendorsWithoutUsableNumbers() {
+    let snapshots = [
+        ProviderSnapshot(
+            providerID: .codex,
+            status: .error,
+            usedTokens: nil,
+            usagePercent: 30,
+            primarySource: .oauth,
+            confidence: .low,
+            isEstimated: false
+        ),
+    ]
+
+    #expect(CombinedStatusFormatter.format(snapshots).title == "--")
+}
+
 @Test func combinedStatusShowsUnknownWithoutData() {
     let status = CombinedStatusFormatter.format([])
 

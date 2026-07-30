@@ -10,7 +10,7 @@ Monorepo layout:
 
 ## Prerequisites
 
-- macOS 14+, Xcode command line tools (Swift 5.9+)
+- macOS 14+, Xcode command line tools (Swift 6.0+)
 - Node 20 + pnpm (only for `apps/www`)
 
 ## Build & test
@@ -64,18 +64,20 @@ To add a vendor, follow [adding-a-provider.md](adding-a-provider.md).
 - `.github/workflows/release.yml` — on a `v*` tag: run tests, build the app
   bundle and DMG via `apps/menubar/Scripts/package.sh`, and create a GitHub
   release with the DMG attached.
+- `.github/workflows/cd.yaml` — deploy `apps/www` to Cloudflare Pages on
+  `v*` tags, manual dispatch, and pushes to `main` that touch www files.
 
 ## Cutting a release
 
 1. Update `CHANGELOG.md` (move Unreleased → new version section).
-2. Commit, push `main`, wait for CI green.
-3. `git tag vX.Y.Z && git push origin vX.Y.Z` — the release workflow does the rest.
-4. In [coodyapp/homebrew-tap](https://github.com/coodyapp/homebrew-tap),
+2. Bump `"version"` in `apps/www/package.json` to `X.Y.Z` — it's the source
+   for the version label on the site (`vite.config.ts` reads it into
+   `VITE_TMB_VERSION`), so it must land before the site deploys.
+3. Commit, push `main`, wait for CI green (the push also deploys the site).
+4. `git tag vX.Y.Z && git push origin vX.Y.Z` — the release workflow does the rest.
+5. In [coodyapp/homebrew-tap](https://github.com/coodyapp/homebrew-tap),
    update `Casks/token-my-bar.rb` with the new version and the `sha256` of the
    **released** DMG (`shasum -a 256 TokenMyBar-X.Y.Z.dmg`), commit and push.
-5. Bump `"version"` in `apps/www/package.json` to `X.Y.Z` — it's the source
-   for the version label on the site (`vite.config.ts` reads it into
-   `VITE_TMB_VERSION`), commit and push.
 
 Signing/notarization are opt-in in `package.sh` via `DEVELOPER_ID_APP` /
 `AC_APPLE_ID` / `AC_TEAM_ID` / `AC_PASSWORD` (see the script header). Releases

@@ -1,5 +1,5 @@
 "use client"
-import { motion, type Transition } from "motion/react"
+import { motion, useReducedMotion, type Transition } from "motion/react"
 
 import { cn } from "@/lib/utils"
 
@@ -20,6 +20,10 @@ export function BorderTrail({
   onAnimationComplete,
   style,
 }: BorderTrailProps) {
+  // MotionConfig's reducedMotion only covers transform/layout animations,
+  // not offsetDistance, so the media query has to be honored by hand here.
+  const reducedMotion = useReducedMotion()
+
   const BASE_TRANSITION: Transition = {
     repeat: Infinity,
     duration: 5,
@@ -35,9 +39,7 @@ export function BorderTrail({
           offsetPath: `rect(0 auto auto 0 round ${size}px)`,
           ...style,
         }}
-        animate={{
-          offsetDistance: ["0%", "100%"],
-        }}
+        animate={reducedMotion ? undefined : { offsetDistance: ["0%", "100%"] }}
         transition={{
           ...(transition ?? BASE_TRANSITION),
           delay: delay,

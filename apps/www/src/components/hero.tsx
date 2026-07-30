@@ -10,8 +10,7 @@ import { MenubarPreview } from "@/components/menubar-preview"
 const REPO = "https://github.com/coodyapp/token-my-bar"
 
 const INSTALL_COMMANDS = [
-  "brew tap coodyapp/token-my-bar https://github.com/coodyapp/token-my-bar",
-  "brew install --cask token-my-bar",
+  "curl -fsSL https://raw.githubusercontent.com/coodyapp/token-my-bar/main/install.sh | bash",
 ]
 
 const INSTALL_CMD = INSTALL_COMMANDS.join("\n")
@@ -59,7 +58,7 @@ export function Hero() {
               href="#install"
               className="group mx-auto block w-fit rounded-3xl border-[2px] border-white/5 bg-gradient-to-tr from-zinc-300/5 via-gray-400/5 to-transparent px-5 py-2 text-sm text-gray-400"
             >
-              v{import.meta.env.VITE_TMB_VERSION} · Now available on Homebrew
+              v{import.meta.env.VITE_TMB_VERSION} · Install in one line
               <ArrowRight className="ml-2 inline h-4 w-4 duration-300 group-hover:translate-x-1" />
             </a>
 
@@ -77,7 +76,7 @@ export function Hero() {
             </p>
             <div className="items-center justify-center space-y-3 gap-x-3 sm:flex sm:space-y-0">
               <span className="relative inline-block overflow-hidden rounded-full p-[1.5px]">
-                <span className="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#FECACA_0%,#B22929_50%,#FECACA_100%)]" />
+                <span className="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#FECACA_0%,#B22929_50%,#FECACA_100%)] motion-reduce:animate-none" />
                 <div className="inline-flex h-full w-full cursor-pointer items-center justify-center rounded-full bg-gray-950 text-xs font-medium text-gray-50 backdrop-blur-3xl">
                   <a
                     href={REPO}
@@ -130,8 +129,9 @@ export function Hero() {
                 />
               </div>
               <p className="text-center font-mono text-sm text-muted-foreground">
-                Installs <code>TokenMyBar.app</code> via Homebrew cask. Prefer
-                a DMG? Grab the{" "}
+                Verifies the release checksum and installs{" "}
+                <code>TokenMyBar.app</code> — no Gatekeeper prompt. Prefer a
+                DMG? Grab the{" "}
                 <a
                   href={`${REPO}/releases/latest`}
                   target="_blank"

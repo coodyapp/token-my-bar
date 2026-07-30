@@ -146,9 +146,12 @@ public enum BrowserCookieImporter {
 
     // MARK: - Firefox
 
-    private static func firefoxCookies(domain: String) -> [Cookie] {
-        let profiles = FileManager.default.homeDirectoryForCurrentUser
+    static var defaultFirefoxProfiles: URL {
+        FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Library/Application Support/Firefox/Profiles", isDirectory: true)
+    }
+
+    static func firefoxCookies(domain: String, profiles: URL = defaultFirefoxProfiles) -> [Cookie] {
         guard let entries = try? FileManager.default.contentsOfDirectory(at: profiles, includingPropertiesForKeys: nil) else {
             return []
         }
@@ -179,19 +182,34 @@ public enum BrowserCookieImporter {
 
     // MARK: - SQLite helpers
 
-    /// Copies the database to a temp file (browser stores stay locked while the
-    /// browser runs) and opens it read-only.
+    /// Copies the database to a private temp directory (browser stores stay
+    /// locked while the browser runs) and reads it there.
+    ///
+    /// The sidecar `-wal`/`-shm` files come along: browsers run their cookie
+    /// stores in WAL mode, where the newest cookies live in the `-wal` file and
+    /// opening the main file alone fails outright with `SQLITE_CANTOPEN`. The
+    /// copy is opened read-write so SQLite can replay that WAL — safe, because
+    /// nothing but this read ever touches the copy.
     private static func readDatabaseCopy<T>(dbPath: String, _ body: (OpaquePointer) -> T) -> T? {
         let fm = FileManager.default
         guard fm.fileExists(atPath: dbPath) else { return nil }
-        let temp = fm.temporaryDirectory.appendingPathComponent("tmb-cookies-\(UUID().uuidString).sqlite")
-        defer { try? fm.removeItem(at: temp) }
-        guard let data = try? Data(contentsOf: URL(fileURLWithPath: dbPath)),
-              fm.createFile(atPath: temp.path, contents: data, attributes: [.posixPermissions: 0o600])
+        let directory = fm.temporaryDirectory.appendingPathComponent("tmb-cookies-\(UUID().uuidString)", isDirectory: true)
+        defer { try? fm.removeItem(at: directory) }
+        guard (try? fm.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])) != nil
         else { return nil }
 
+        let temp = directory.appendingPathComponent("Cookies")
+        // Main file first, then the WAL: a WAL entry with no matching page in the
+        // main file is ignored, while the reverse would drop committed cookies.
+        for suffix in ["", "-wal", "-shm"] where fm.fileExists(atPath: dbPath + suffix) {
+            guard let data = try? Data(contentsOf: URL(fileURLWithPath: dbPath + suffix)),
+                  fm.createFile(atPath: temp.path + suffix, contents: data, attributes: [.posixPermissions: 0o600])
+            else { return nil }
+        }
+        guard fm.fileExists(atPath: temp.path) else { return nil }
+
         var db: OpaquePointer?
-        let flags = SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX
+        let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX
         guard sqlite3_open_v2(temp.path, &db, flags, nil) == SQLITE_OK, let db else {
             if let db { sqlite3_close(db) }
             return nil
