@@ -72,7 +72,9 @@ public struct OpenCodeLocalUsageProvider: ProviderClient {
                     ? "Local OpenCode sessions: \(usage.sessionCount)"
                     : "OpenCode database found, but no token usage yet",
                 authSummary: "Local SQLite / no network auth",
-                usageRows: usage.rows
+                // Rows of zeros would read as real data downstream and displace
+                // good cached numbers, so an empty database reports nothing.
+                usageRows: usage.totalTokens > 0 ? usage.rows : []
             )
         } catch OpenCodeLocalUsageError.databaseMissing {
             return ProviderSnapshot(
