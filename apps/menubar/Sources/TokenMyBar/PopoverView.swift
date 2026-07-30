@@ -31,6 +31,10 @@ struct PopoverView: View {
 
     private var updatedText: String {
         guard let date = snapshots.map(\.refreshedAt).max() else { return "never" }
+        // A snapshot stamped moments ago — every fresh refresh, and every cached
+        // copy restamped during this very render — formats as "in 0 sec", which
+        // reads as the future.
+        guard Date().timeIntervalSince(date) >= 5 else { return "just now" }
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .short
         return formatter.localizedString(for: date, relativeTo: Date())
@@ -62,7 +66,9 @@ struct PopoverView: View {
     @ViewBuilder
     private var content: some View {
         if displaySnapshots.isEmpty {
-            if snapshots.isEmpty {
+            // On a fresh install there is no cache to show, so "no vendors" would
+            // send a first-run user to Settings for a problem that doesn't exist.
+            if snapshots.isEmpty, !actions.isRefreshing {
                 EmptyStateView()
             } else {
                 LoadingStateView()
@@ -170,21 +176,30 @@ private struct HeaderButton: View {
 private struct VendorSection: View {
     let snapshot: ProviderSnapshot
 
-    private var isStale: Bool { snapshot.status == .stale || snapshot.status == .error }
-
-    private var rows: [UsageRow] {
-        if !snapshot.usageRows.isEmpty { return snapshot.usageRows }
-        return [UsageRow(key: "status", title: snapshot.displayName, subtitle: snapshot.message, value: snapshot.status.label)]
+    /// Expired auth also shows cached numbers, so its bars must not read as live.
+    private var isStale: Bool {
+        snapshot.status == .stale || snapshot.status == .error || snapshot.status == .unauthenticated
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VendorHeader(snapshot: snapshot)
-                .padding(.bottom, 10)
+                .padding(.bottom, snapshot.usageRows.isEmpty ? 6 : 10)
 
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(rows, id: \.id) { row in
-                    UsageRowView(row: row, isStale: isStale)
+            if snapshot.usageRows.isEmpty {
+                // Why this vendor has nothing to show is the only useful thing
+                // left to say, so give it the full width instead of squeezing it
+                // into a usage row beside an empty meter.
+                Text(snapshot.message ?? snapshot.status.label)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(snapshot.usageRows, id: \.id) { row in
+                        UsageRowView(row: row, isStale: isStale)
+                    }
                 }
             }
         }

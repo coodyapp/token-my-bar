@@ -8,6 +8,7 @@ import TokenMyBarCore
 @MainActor
 final class SettingsWindowController {
     private let window: NSWindow
+    private let model: SettingsModel
 
     init(
         settings: AppSettings,
@@ -16,16 +17,14 @@ final class SettingsWindowController {
         onVendorsChange: @escaping () -> Void,
         onDisplayPreferencesChange: @escaping () -> Void
     ) {
-        let view = SettingsView(
-            model: SettingsModel(
-                settings: settings,
-                launchAtLogin: launchAtLogin,
-                onRefreshIntervalChange: onRefreshIntervalChange,
-                onVendorsChange: onVendorsChange,
-                onDisplayPreferencesChange: onDisplayPreferencesChange
-            )
+        model = SettingsModel(
+            settings: settings,
+            launchAtLogin: launchAtLogin,
+            onRefreshIntervalChange: onRefreshIntervalChange,
+            onVendorsChange: onVendorsChange,
+            onDisplayPreferencesChange: onDisplayPreferencesChange
         )
-        let hosting = NSHostingController(rootView: view)
+        let hosting = NSHostingController(rootView: SettingsView(model: model))
         window = NSWindow(contentViewController: hosting)
         window.title = "TokenMyBar Settings"
         window.styleMask = [.titled, .closable, .miniaturizable]
@@ -35,6 +34,7 @@ final class SettingsWindowController {
     }
 
     func show() {
+        model.reload()
         window.makeKeyAndOrderFront(nil)
         window.orderFrontRegardless()
     }
@@ -51,6 +51,7 @@ final class SettingsModel: ObservableObject {
 
     @Published var launchAtLoginEnabled: Bool {
         didSet {
+            guard !isReloading else { return }
             launchAtLogin.setEnabled(launchAtLoginEnabled)
             let actual = launchAtLogin.isEnabled
             settings.launchAtLogin = actual
@@ -97,6 +98,9 @@ final class SettingsModel: ObservableObject {
         didSet { settings.monochromeIcons = monochromeIcons; onDisplayPreferencesChange() }
     }
 
+    /// Set while `reload()` mirrors external state in, so the property observers
+    /// don't read it back as a user edit and re-apply it.
+    private var isReloading = false
     private let settings: AppSettings
     private let launchAtLogin: LaunchAtLoginManager
     private let onRefreshIntervalChange: () -> Void
@@ -125,6 +129,15 @@ final class SettingsModel: ObservableObject {
         self.showProviderOrder = settings.showProviderOrder
         self.showColoredUsageIndicators = settings.showColoredUsageIndicators
         self.monochromeIcons = settings.monochromeIcons
+    }
+
+    /// Re-reads the login item, which the status-item context menu and System
+    /// Settings can both change while this window is closed. A reopened window
+    /// showing the opposite state would tell the user the setting is already on.
+    func reload() {
+        isReloading = true
+        launchAtLoginEnabled = launchAtLogin.isEnabled
+        isReloading = false
     }
 
     func bindingForVendor(_ id: ProviderID) -> Binding<Bool> {

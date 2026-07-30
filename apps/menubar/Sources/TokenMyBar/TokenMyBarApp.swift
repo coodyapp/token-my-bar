@@ -64,7 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         )
 
         Task {
-            snapshots = await refresher.cached()
+            snapshots = await refresher.cached(enabled: settings.enabledProviders)
             render()
             await refresh()
         }
@@ -221,7 +221,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         config = AppConfig.load()
         let next = await refresher.refresh(
             enabled: settings.enabledProviders,
-            ttl: force ? 0 : config.refreshTTL
+            ttl: force ? 0 : config.timerTTL(interval: settings.refreshInterval.seconds)
         )
         snapshots = next
         isRefreshing = false
@@ -264,31 +264,48 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
 
         let mode = effectiveDisplayMode(for: segments)
-        if mode == .summary {
-            return summaryStatusTitle(for: segments)
-        }
-
         let title = NSMutableAttributedString()
-        for (index, segment) in segments.enumerated() {
-            if index > 0 {
-                title.append(NSAttributedString(string: "  "))
+        if mode == .summary {
+            title.append(summaryStatusTitle(for: segments))
+        } else {
+            for (index, segment) in segments.enumerated() {
+                if index > 0 {
+                    title.append(NSAttributedString(string: "  "))
+                }
+                switch mode {
+                case .iconPercentage, .custom:
+                    title.append(statusSegment(iconName: segment.providerID.iconName, title: segment.title))
+                case .percentageOnly:
+                    title.append(statusText(segment.title))
+                case .iconsOnly:
+                    title.append(statusSegment(iconName: segment.providerID.iconName, title: ""))
+                case .summary:
+                    break
+                }
             }
-            switch mode {
-            case .iconPercentage, .custom:
-                title.append(statusSegment(iconName: segment.providerID.iconName, title: segment.title))
-            case .percentageOnly:
-                title.append(statusText(segment.title))
-            case .iconsOnly:
-                title.append(statusSegment(iconName: segment.providerID.iconName, title: ""))
-            case .summary:
-                break
-            }
+        }
+        // A vendor that can't report a percent — expired auth, a failed fetch —
+        // would otherwise disappear from the bar without a trace while the others
+        // keep showing numbers. Flag it instead of inventing a figure for it.
+        if needsAttention(besides: segments) {
+            title.append(NSAttributedString(string: "  "))
+            title.append(statusSegment(iconName: "exclamationmark.triangle", title: ""))
         }
         return title
     }
 
+    private func needsAttention(besides segments: [(providerID: ProviderID, percent: Double, title: String)]) -> Bool {
+        let shown = Set(segments.map(\.providerID))
+        return snapshots.contains { snapshot in
+            !shown.contains(snapshot.providerID)
+                && (snapshot.status == .unauthenticated || snapshot.status == .error)
+        }
+    }
+
     private func effectiveDisplayMode(for segments: [(providerID: ProviderID, percent: Double, title: String)]) -> DisplayMode {
-        if settings.hideLabelsWhenSpaceLimited, segments.count > 3 { return .iconsOnly }
+        // Three vendors of "icon 100%" is the widest the title ever gets, so that
+        // is the case this setting exists for — a higher threshold never fires.
+        if settings.hideLabelsWhenSpaceLimited, segments.count > 2 { return .iconsOnly }
         if settings.collapseToSummaryAutomatically, segments.count > 2 { return .summary }
         return settings.displayMode
     }

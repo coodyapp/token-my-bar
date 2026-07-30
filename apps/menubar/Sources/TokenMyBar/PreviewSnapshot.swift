@@ -5,20 +5,33 @@ import TokenMyBarCore
 
 /// Dev-only: renders the popover to a PNG via ImageRenderer (no screen capture needed).
 /// Activated by launching with the `TMB_SNAPSHOT=/path/out.png` environment variable.
+///
+/// `TMB_SNAPSHOT_STATE` picks which state to draw — `ok` (default), `degraded`,
+/// `loading`, or `empty` — because the states a user is most likely to be
+/// confused by are the ones a happy-path-only preview never shows.
 @MainActor
 enum PreviewSnapshot {
+    enum State: String {
+        case ok
+        case degraded
+        case loading
+        case empty
+    }
+
     static func renderIfRequested() -> Bool {
         guard let path = ProcessInfo.processInfo.environment["TMB_SNAPSHOT"] else { return false }
-        render(to: path)
+        let state = ProcessInfo.processInfo.environment["TMB_SNAPSHOT_STATE"]
+            .flatMap(State.init(rawValue:)) ?? .ok
+        render(to: path, state: state)
         return true
     }
 
-    static func render(to path: String) {
+    static func render(to path: String, state: State = .ok) {
         let actions = PopoverActions(
-            isRefreshing: false,
+            isRefreshing: state == .loading,
             onRefresh: {}, onSettings: {}, onAbout: {}, onQuit: {}
         )
-        let content = PopoverView(snapshots: mockSnapshots, actions: actions)
+        let content = PopoverView(snapshots: snapshots(for: state), actions: actions)
             .environment(\.colorScheme, .dark)
             .background(Color.black)
 
@@ -34,6 +47,42 @@ enum PreviewSnapshot {
         }
         try? png.write(to: URL(fileURLWithPath: path))
         FileHandle.standardError.write(Data("snapshot: wrote \(path)\n".utf8))
+    }
+
+    private static func snapshots(for state: State) -> [ProviderSnapshot] {
+        switch state {
+        case .ok: mockSnapshots
+        case .degraded: degradedSnapshots
+        case .loading, .empty: []
+        }
+    }
+
+    /// The states worth eyeballing before a release: expired auth still showing
+    /// its last-known numbers, a vendor that failed outright, and one with no
+    /// data yet.
+    private static var degradedSnapshots: [ProviderSnapshot] {
+        [
+            ProviderSnapshot(
+                providerID: .codex, status: .error, usedTokens: nil,
+                primarySource: .oauth, confidence: .low, isEstimated: false,
+                message: "Codex OAuth usage failed (HTTP 500)"
+            ),
+            ProviderSnapshot(
+                providerID: .claudeCode, status: .unauthenticated, usedTokens: nil,
+                usagePercent: 42, refreshedAt: Date().addingTimeInterval(-3600),
+                primarySource: .oauth, confidence: .high, isEstimated: false,
+                message: "Sign in again; showing cached data", planName: "Max",
+                usageRows: [
+                    UsageRow(key: "session", title: "Session", value: "42%", detail: "Resets in 2h 5m", percent: 42),
+                    UsageRow(key: "weekly", title: "Weekly", value: "61%", detail: "Resets in 3d 1h", percent: 61),
+                ]
+            ),
+            ProviderSnapshot(
+                providerID: .opencode, status: .noData, usedTokens: nil,
+                primarySource: .localFile, confidence: .low, isEstimated: true,
+                message: "OpenCode database found, but no token usage yet"
+            ),
+        ]
     }
 
     private static var mockSnapshots: [ProviderSnapshot] {

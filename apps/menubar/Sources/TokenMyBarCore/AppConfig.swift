@@ -72,6 +72,21 @@ public struct AppConfig: Equatable, Sendable {
         }
     }
 
+    /// Cache TTL to use for a scheduled refresh at `interval`.
+    ///
+    /// The configured TTL (120s by default) outlasts a shorter chosen interval,
+    /// so every "Every 1 minute" tick would find fresh cache and skip fetching —
+    /// the cadence the user picked has to win. Freshness is measured from when
+    /// the cache was *written*, i.e. after a fetch that can take up to the
+    /// provider timeout, so half the interval is the margin: it still absorbs a
+    /// duplicate refresh within one tick, but a slow vendor — the case a user
+    /// polling every minute most wants to watch — can no longer cost a whole
+    /// tick and halve the effective cadence.
+    public func timerTTL(interval: TimeInterval?) -> TimeInterval {
+        guard let interval, interval > 0 else { return refreshTTL }
+        return min(refreshTTL, interval / 2)
+    }
+
     /// Maps user-friendly vendor aliases to a vendor ID.
     public static func vendor(from raw: String) -> ProviderID? {
         let normalized = raw.trimmingCharacters(in: .whitespaces).lowercased()
