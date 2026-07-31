@@ -101,10 +101,15 @@ public struct UsageRow: Codable, Equatable, Sendable, Identifiable {
     public let title: String
     public let subtitle: String?
     public let value: String
-    /// Optional trailing text rendered on the right of the usage line (e.g. reset countdown).
+    /// Optional trailing text rendered on the right of the usage line, for
+    /// details that are not a countdown (e.g. "Starts when a message is sent").
     public let detail: String?
     /// SF Symbol name to show next to the row title.
     public let iconName: String?
+    /// When this window rolls over. Stored as a date, not a rendered countdown:
+    /// a cached row keeps whatever string it was built with, so "Resets in 26m"
+    /// would still read that way weeks later.
+    public let resetAt: Date?
     public let percent: Double?
     public let trend: UsageTrend
     public let unit: UsageUnit
@@ -116,6 +121,7 @@ public struct UsageRow: Codable, Equatable, Sendable, Identifiable {
         value: String,
         detail: String? = nil,
         iconName: String? = nil,
+        resetAt: Date? = nil,
         percent: Double? = nil,
         trend: UsageTrend = .unknown,
         unit: UsageUnit = .unknown
@@ -126,9 +132,17 @@ public struct UsageRow: Codable, Equatable, Sendable, Identifiable {
         self.value = value
         self.detail = detail
         self.iconName = iconName
+        self.resetAt = resetAt
         self.percent = percent
         self.trend = trend
         self.unit = unit
+    }
+
+    /// Countdown for this window as of `now`, or `nil` once it has elapsed.
+    public func resetText(now: Date = Date()) -> String? {
+        guard let resetAt else { return nil }
+        guard resetAt > now else { return nil }
+        return Format.resetCountdown(until: resetAt, now: now)
     }
 }
 

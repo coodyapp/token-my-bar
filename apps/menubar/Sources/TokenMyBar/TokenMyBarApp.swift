@@ -274,11 +274,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 }
                 switch mode {
                 case .iconPercentage, .custom:
-                    title.append(statusSegment(iconName: segment.providerID.iconName, title: segment.title))
+                    title.append(statusSegment(iconName: segment.providerID.iconName, title: segmentTitle(segment), isStale: segment.isStale))
                 case .percentageOnly:
-                    title.append(statusText(segment.title))
+                    title.append(statusText(segmentTitle(segment), isStale: segment.isStale))
                 case .iconsOnly:
-                    title.append(statusSegment(iconName: segment.providerID.iconName, title: ""))
+                    title.append(statusSegment(iconName: segment.providerID.iconName, title: "", isStale: segment.isStale))
                 case .summary:
                     break
                 }
@@ -294,7 +294,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return title
     }
 
-    private func needsAttention(besides segments: [(providerID: ProviderID, percent: Double, title: String)]) -> Bool {
+    /// Names the window only when it is not the session. A reader assumes the
+    /// session window, so labelling that one costs width without adding
+    /// information — while an unlabelled weekly number is the case that misleads.
+    private func segmentTitle(_ segment: MenuBarHeadline) -> String {
+        guard !segment.windowLabel.isEmpty, segment.windowLabel != "5h" else { return segment.percentText }
+        return "\(segment.percentText) \(segment.windowLabel)"
+    }
+
+    private func needsAttention(besides segments: [MenuBarHeadline]) -> Bool {
         let shown = Set(segments.map(\.providerID))
         return snapshots.contains { snapshot in
             !shown.contains(snapshot.providerID)
@@ -302,7 +310,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    private func effectiveDisplayMode(for segments: [(providerID: ProviderID, percent: Double, title: String)]) -> DisplayMode {
+    private func effectiveDisplayMode(for segments: [MenuBarHeadline]) -> DisplayMode {
         // Three vendors of "icon 100%" is the widest the title ever gets, so that
         // is the case this setting exists for — a higher threshold never fires.
         if settings.hideLabelsWhenSpaceLimited, segments.count > 2 { return .iconsOnly }
@@ -310,35 +318,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return settings.displayMode
     }
 
-    private func summaryStatusTitle(for segments: [(providerID: ProviderID, percent: Double, title: String)]) -> NSAttributedString {
+    private func summaryStatusTitle(for segments: [MenuBarHeadline]) -> NSAttributedString {
         switch settings.summaryCalculation {
         case .highestUsage:
             guard let highest = segments.max(by: { $0.percent < $1.percent }) else { return statusText("--") }
-            return statusSegment(iconName: highest.providerID.iconName, title: highest.title)
+            return statusSegment(iconName: highest.providerID.iconName, title: segmentTitle(highest), isStale: highest.isStale)
         case .averageUsage:
             let average = segments.map(\.percent).reduce(0, +) / Double(segments.count)
-            return statusSegment(iconName: "chart.bar.xaxis", title: "\(Int(average.rounded()))%")
+            return statusSegment(
+                iconName: "chart.bar.xaxis",
+                title: "\(Int(average.rounded()))%",
+                isStale: segments.contains(where: \.isStale)
+            )
         case .selectedProvider:
             guard let selected = SummarySelection.selected(segments, primary: config.primaryVendor, id: { $0.providerID }) else {
                 return statusText("--")
             }
-            return statusSegment(iconName: selected.providerID.iconName, title: selected.title)
+            return statusSegment(iconName: selected.providerID.iconName, title: segmentTitle(selected), isStale: selected.isStale)
         }
     }
 
-    private func statusSegments() -> [(providerID: ProviderID, percent: Double, title: String)] {
-        let ordered = CombinedStatusFormatter.orderedUsableSnapshots(
-            snapshots,
-            primary: settings.showProviderOrder ? config.primaryVendor : nil
+    private func statusSegments() -> [MenuBarHeadline] {
+        MenuBarHeadline.all(
+            CombinedStatusFormatter.orderedUsableSnapshots(
+                snapshots,
+                primary: settings.showProviderOrder ? config.primaryVendor : nil
+            )
         )
-
-        return ordered.compactMap { snapshot in
-            guard let percent = snapshot.usagePercent else { return nil }
-            return (snapshot.providerID, percent, "\(Int(percent.rounded()))%")
-        }
     }
 
-    private func statusSegment(iconName: String, title: String) -> NSAttributedString {
+    private func statusSegment(iconName: String, title: String, isStale: Bool = false) -> NSAttributedString {
         let result = NSMutableAttributedString()
         if let image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil) {
             let attachment = NSTextAttachment()
@@ -349,17 +358,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 result.append(NSAttributedString(string: " "))
             }
         }
-        result.append(statusText(title))
+        result.append(statusText(title, isStale: isStale))
         return result
     }
 
-    private func statusText(_ title: String) -> NSAttributedString {
-        let color: NSColor = settings.showColoredUsageIndicators && !settings.monochromeIcons ? .controlAccentColor : .labelColor
+    /// Readings that are not current are dimmed rather than dropped: the number
+    /// is still the best available, but it must not look like a live one.
+    private func statusText(_ title: String, isStale: Bool = false) -> NSAttributedString {
+        let live: NSColor = settings.showColoredUsageIndicators && !settings.monochromeIcons ? .controlAccentColor : .labelColor
         return NSAttributedString(
             string: title,
             attributes: [
                 .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .semibold),
-                .foregroundColor: color,
+                .foregroundColor: isStale ? NSColor.tertiaryLabelColor : live,
             ]
         )
     }
