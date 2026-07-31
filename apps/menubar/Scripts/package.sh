@@ -26,6 +26,7 @@ APP_NAME="TokenMyBar"
 BUNDLE_ID="app.tokenmybar"
 EXECUTABLE="TokenMyBar"
 ENTITLEMENTS="$PACKAGE_DIR/Scripts/${APP_NAME}.entitlements"
+ICON="$PACKAGE_DIR/Scripts/AppIcon.icns"
 
 # --- version --------------------------------------------------------------
 VERSION="${1:-}"
@@ -49,6 +50,7 @@ CONTENTS="$APP_BUNDLE/Contents"
 rm -rf "$APP_BUNDLE"
 mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources"
 cp "$BUILD_DIR/$EXECUTABLE" "$CONTENTS/MacOS/$EXECUTABLE"
+cp "$ICON" "$CONTENTS/Resources/AppIcon.icns"
 
 cat > "$CONTENTS/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -59,6 +61,7 @@ cat > "$CONTENTS/Info.plist" <<PLIST
   <key>CFBundleDisplayName</key><string>$APP_NAME</string>
   <key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
   <key>CFBundleExecutable</key><string>$EXECUTABLE</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
   <key>CFBundleVersion</key><string>$BUILD_NUMBER</string>
@@ -106,6 +109,7 @@ cp -R "$APP_BUNDLE" "$DMG_STAGING/"
 if command -v create-dmg >/dev/null 2>&1 &&
   create-dmg \
     --volname "$APP_NAME" \
+    --volicon "$ICON" \
     --background "$DMG_BACKGROUND" \
     --window-pos 200 120 \
     --window-size 655 420 \

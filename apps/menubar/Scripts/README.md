@@ -19,6 +19,9 @@ an unsigned local build:
 The hardened-runtime entitlements live in `TokenMyBar.entitlements` (not
 sandboxed — the app reads existing local credentials the sandbox would block).
 
+The app (and DMG volume) icon is `AppIcon.icns`, rendered by
+`generate-app-icon.swift` — its header has the commands to regenerate it.
+
 ## Not yet implemented
 
 - Sparkle appcast generation for auto-updates.
