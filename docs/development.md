@@ -11,7 +11,7 @@ Monorepo layout:
 ## Prerequisites
 
 - macOS 14+, Xcode command line tools (Swift 6.0+)
-- Node 20 + pnpm (only for `apps/www`)
+- Node 22 + pnpm (only for `apps/www`; matches what CI pins)
 
 ## Build & test
 
@@ -23,7 +23,8 @@ swift test  --package-path apps/menubar
 # Run the app from the build tree
 swift run --package-path apps/menubar TokenMyBar
 
-# Diagnostics CLI
+# Diagnostics CLI — build-from-source only; the DMG and Homebrew cask ship
+# TokenMyBar.app alone, no `token-my-bar` binary.
 swift run --package-path apps/menubar token-my-bar status --refresh --verbose
 
 # Website
@@ -80,5 +81,8 @@ To add a vendor, follow [adding-a-provider.md](adding-a-provider.md).
    **released** DMG (`shasum -a 256 TokenMyBar-X.Y.Z.dmg`), commit and push.
 
 Signing/notarization are opt-in in `package.sh` via `DEVELOPER_ID_APP` /
-`AC_APPLE_ID` / `AC_TEAM_ID` / `AC_PASSWORD` (see the script header). Releases
-are unsigned until those secrets are configured.
+`AC_APPLE_ID` / `AC_TEAM_ID` / `AC_PASSWORD` (see the script header).
+`release.yml` sets none of them, so shipped releases are ad-hoc signed
+(`codesign --sign -`) with no hardened runtime, no entitlements, and no notary
+ticket. Wiring those four as repository secrets in `release.yml` is what turns the
+branches on.

@@ -11,13 +11,26 @@ TokenMyBar is a native macOS menu bar app that gives you real-time insight into 
 
 ## Install
 
+Requires macOS 14 (Sonoma) or newer on Apple Silicon.
+
+Releases are ad-hoc signed, not notarized (no Apple Developer ID yet). Gatekeeper
+only checks *quarantined* apps, so the paths below differ mainly in who clears the
+quarantine flag.
+
 - **Install script** (recommended — verifies checksum, no Gatekeeper prompt):
 
   ```bash
   curl -fsSL https://raw.githubusercontent.com/coodyapp/token-my-bar/main/install.sh | bash
   ```
 
-- **Homebrew**: `brew tap coodyapp/tap && brew install --cask token-my-bar`
+- **Homebrew** — recent Homebrew refuses casks from untrusted third-party taps, so
+  either `brew trust --tap coodyapp/tap` first or install with the check off:
+
+  ```bash
+  brew tap coodyapp/tap
+  HOMEBREW_NO_REQUIRE_TAP_TRUST=1 brew install --cask token-my-bar
+  ```
+
 - **DMG**: grab `TokenMyBar-<version>.dmg` from the [latest release](https://github.com/coodyapp/token-my-bar/releases/latest), drag to `/Applications`, then `xattr -rd com.apple.quarantine /Applications/TokenMyBar.app`.
 
 Full instructions (Gatekeeper notes, first-run Keychain prompts, uninstall): [docs/installation.md](docs/installation.md).
@@ -30,7 +43,8 @@ See [docs/user-guide.md](docs/user-guide.md) for setup, settings, display modes,
 
 - `apps/menubar`: Swift macOS menu bar app, shared core, and Swift CLI.
 - `apps/www`: React + Vite website.
-- Swift CLI lives in `apps/menubar/Sources/TokenMyBarCLI`.
+- Swift CLI lives in `apps/menubar/Sources/TokenMyBarCLI`. It is build-from-source
+  only — the DMG and Homebrew cask ship `TokenMyBar.app` alone.
 
 ## Development
 
@@ -45,4 +59,8 @@ Architecture, provider rules, and the release process live in [docs/development.
 
 ## Privacy
 
-TokenMyBar reads existing local app sessions and cache data on your Mac. Snapshot cache does not store OAuth tokens, cookies, authorization headers, API keys, or passwords.
+TokenMyBar reads the vendor sessions already on your Mac: `~/.codex/auth.json`, the `Claude Code-credentials` Keychain item, and — for OpenCode — the `opencode.ai` cookie from a local browser cookie store. Nothing is written back, and the snapshot cache stores no OAuth tokens, cookies, authorization headers, API keys, or passwords. Details: [docs/privacy.md](docs/privacy.md).
+
+## License
+
+MIT — see [LICENSE](LICENSE).

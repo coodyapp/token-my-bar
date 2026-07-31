@@ -39,8 +39,9 @@ item, and requires the `user:profile` scope to call usage.
 ## Local cost fallback
 
 When OAuth is unavailable, the provider falls back to local JSONL logs under
-`~/.claude/projects` (and `$CLAUDE_CONFIG_DIR`). These are observed history only
-and never become a quota percentage.
+`~/.claude/projects`. That path is not overridable — unlike Codex, there is no
+`CLAUDE_CONFIG_DIR`-style env var. These are observed history only and never
+become a quota percentage.
 
 ## Key files
 

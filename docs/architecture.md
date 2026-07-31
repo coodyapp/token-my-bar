@@ -137,12 +137,24 @@ No broad filesystem watching.
 
 ## Distribution
 
-Direct and Homebrew builds:
+Direct DMG and Homebrew ship the same bundle. Today:
 
-- unsandboxed
-- hardened runtime
-- signed and notarized
-- Sparkle for direct DMG updates is planned
+- unsandboxed, and carrying no entitlements at all
+- ad-hoc signed only: `package.sh` seals the bundle with `codesign --sign -`, so
+  there is no Developer ID, no team identifier, and no hardened runtime
+- not notarized, no stapled ticket — `spctl` rejects the app and the DMG
+- consequence: Gatekeeper blocks a *quarantined* copy, which is why `install.sh`
+  and the Homebrew cask postflight clear `com.apple.quarantine`
 - Homebrew users update through Homebrew
+
+Planned mechanism:
+
+- Developer ID signing, hardened runtime, and notarization. `package.sh` already
+  has the branches (`DEVELOPER_ID_APP` for signing plus
+  `AC_APPLE_ID`/`AC_TEAM_ID`/`AC_PASSWORD` for notarytool) and
+  `Scripts/TokenMyBar.entitlements` holds the intended hardened-runtime
+  entitlements, but `release.yml` sets none of those variables, so both branches
+  are dead in CI.
+- Sparkle for direct DMG updates.
 
 App Store is future separate sandboxed target.

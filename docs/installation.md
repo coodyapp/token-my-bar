@@ -65,9 +65,15 @@ TokenMyBar reads usage from tools you already use — there is no separate sign-
   Keychain. The first read triggers the standard macOS Keychain consent prompt;
   click **Allow** (or **Always Allow**).
 - **OpenAI Codex** — reads `~/.codex/auth.json` written by the Codex CLI.
-- **OpenCode** — imports the opencode.ai session cookie from your browser
-  (Chrome/Chromium; decrypting its cookie store also prompts via Keychain), or
-  set `TOKEN_MY_BAR_OPENCODE_COOKIE` yourself.
+- **OpenCode** — imports the opencode.ai session cookie from a local browser: Arc,
+  Chrome, Brave, Edge, Chromium, Vivaldi, or Firefox. For the Chromium-family
+  browsers, decrypting the cookie also reads that browser's "Safe Storage"
+  Keychain key, so expect a second Keychain prompt — but only for the browser that
+  actually has an opencode.ai cookie. To skip browser import entirely, put the
+  cookie in `~/.config/token-my-bar/config.toml` under `[opencode] cookie`
+  (`chmod 600` it) — the `TOKEN_MY_BAR_OPENCODE_COOKIE` environment variable works
+  for the CLI but never reaches the app, which Launch Services starts with no
+  shell environment.
 
 If a vendor shows **Sign in**, authenticate once in that vendor's own app and
 refresh. See the [user guide](user-guide.md) for settings and troubleshooting,

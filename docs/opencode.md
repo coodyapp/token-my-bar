@@ -13,7 +13,11 @@ no public OAuth API, so TokenMyBar reuses the `opencode.ai` `auth` cookie.
 ## Auth (cookie resolution order)
 
 1. `TOKEN_MY_BAR_OPENCODE_COOKIE` env var (raw value or a full `Cookie:` header).
-2. Browser import (`BrowserCookieImporter`), domain `opencode.ai`:
+   The menu bar app is launched by Launch Services and inherits no shell
+   environment, so this one reaches the CLI only.
+2. `[opencode] cookie` in `~/.config/token-my-bar/config.toml` — the app's own
+   override. Keep that file `0600`; it holds a credential.
+3. Browser import (`BrowserCookieImporter`), domain `opencode.ai`:
    - Chromium family (Arc, Chrome, Brave, Edge, Chromium, Vivaldi): reads the
      `auth` cookie from `<user data>/<profile>/Cookies` (or `.../Network/Cookies`),
      decrypts the `v10` AES-128-CBC blob using the browser's "<Browser> Safe
@@ -36,7 +40,9 @@ the live store locked.
    All `wrk_…` IDs are extracted from the serialized JS response, in order.
 2. **Usage**: `GET https://opencode.ai/workspace/<wrk_…>/go` (HTML page). The
    first workspace that reports usage windows wins. `TOKEN_MY_BAR_OPENCODE_WORKSPACE_ID`
-   (raw `wrk_…` or full URL) skips the lookup.
+   (raw `wrk_…` or full URL) skips the lookup for the CLI; `[opencode]
+   workspace_id` in `config.toml` does the same for the app. This is the recovery
+   path when the hardcoded server-function id above stops resolving.
 
 ## Usage mapping
 

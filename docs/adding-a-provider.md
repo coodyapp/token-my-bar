@@ -63,13 +63,16 @@ spelunking:
   `AuthError.http(status)` for non-2xx responses.
 - `RemoteJSON.findObject(in:keys:)` / `findString(in:keys:)` — recursive,
   depth-bounded lookups that tolerate snake_case vs. camelCase key spellings.
-- `RemoteJSON.percent(in:remaining:)` — normalizes a percentage into 0...100
-  (handles 0...1 fractions); pass `remaining: true` if the vendor reports percent
-  *remaining* so the UI sees percent *used*.
-- `RemoteJSON.resetDate(in:)` / `resetSubtitle(in:)` — parse reset timestamps or
-  seconds-until-reset.
-- `RemoteJSON.row(key:title:iconName:object:remaining:)` — builds a `UsageRow`
-  with its percent, value string, and reset detail.
+- `RemoteJSON.percent(in:)` — reads a percent-*used* field and clamps it to
+  0...100. There is no "remaining" mode and no fraction scaling: every vendor here
+  reports percent used on a 0–100 scale, and small values pass through unscaled
+  (Codex sends `used_percent: 1` for 1%). If your vendor reports percent
+  *remaining*, invert it in your own provider — do not reuse a used-percent key
+  name for it.
+- `RemoteJSON.resetDate(in:)` — parses an absolute reset timestamp, preferring it
+  over seconds-until-reset fields when both exist.
+- `RemoteJSON.row(key:title:iconName:object:)` — builds a `UsageRow` from one
+  window object.
 - `RemoteJSON.planName(in:keys:)` — extracts a human-friendly plan/tier label.
 
 Read your credentials (e.g. an OAuth token file or cookie) and throw
