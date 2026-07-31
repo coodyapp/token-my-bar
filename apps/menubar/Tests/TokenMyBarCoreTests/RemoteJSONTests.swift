@@ -44,21 +44,63 @@ import Testing
     #expect(date == Date(timeIntervalSince1970: 1_783_562_510))
 }
 
-@Test func resetSubtitleFormatsDaysHoursMinutes() {
+@Test func resetCountdownFormatsDaysHoursMinutes() {
     let now = Date(timeIntervalSince1970: 0)
-    #expect(RemoteJSON.resetSubtitle(in: ["resetInSec": 4320], now: now) == "Resets in 1h 12m")
-    #expect(RemoteJSON.resetSubtitle(in: ["resetInSec": 90_000], now: now) == "Resets in 1d 1h")
-    #expect(RemoteJSON.resetSubtitle(in: ["resetInSec": 600], now: now) == "Resets in 10m")
-    #expect(RemoteJSON.resetSubtitle(in: ["resetInSec": -100], now: now) == "Resets in 0m")
-    #expect(RemoteJSON.resetSubtitle(in: [:], now: now) == nil)
+    func countdown(_ seconds: TimeInterval) -> String {
+        Format.resetCountdown(until: now.addingTimeInterval(seconds), now: now)
+    }
+    #expect(countdown(4320) == "Resets in 1h 12m")
+    #expect(countdown(90_000) == "Resets in 1d 1h")
+    #expect(countdown(600) == "Resets in 10m")
+    #expect(countdown(-100) == "Resets in 0m")
+}
+
+@Test func rowStoresTheResetDateSoTheCountdownIsNeverFrozen() {
+    // The countdown used to be rendered once at fetch time and persisted, so a
+    // cached row still claimed "Resets in 26m" weeks later.
+    let now = Date(timeIntervalSince1970: 1_000_000)
+    let row = RemoteJSON.row(key: "session", title: "Session", object: ["used_percent": 20, "resetInSec": 3600], now: now)
+
+    #expect(row.resetAt == now.addingTimeInterval(3600))
+    #expect(row.resetText(now: now) == "Resets in 1h 0m")
+    // An hour later the same row reports the time actually left, and once the
+    // window has passed it reports nothing rather than a stale countdown.
+    #expect(row.resetText(now: now.addingTimeInterval(1800)) == "Resets in 30m")
+    #expect(row.resetText(now: now.addingTimeInterval(7200)) == nil)
+}
+
+@Test func rowReportsNoPercentRatherThanInventingZero() {
+    // A window the vendor sent whose percent key this build does not know must
+    // not read as "0% used" — that tells the user they have a full tank.
+    let renamed = RemoteJSON.row(key: "weekly", title: "Weekly", object: ["utilization_pct": 88, "resetInSec": 60])
+
+    #expect(renamed.percent == nil)
+    #expect(renamed.value == "—")
+    #expect(RemoteJSON.unreadableWindow(in: [renamed])?.title == "Weekly")
 }
 
 @Test func percentReadsAliasesAndNormalizes() {
     #expect(RemoteJSON.percent(in: ["used_percent": 18]) == 18)
     #expect(RemoteJSON.percent(in: ["utilization": 47.0]) == 47)
     #expect(RemoteJSON.percent(in: ["usagePercent": "8"]) == 8)
-    #expect(RemoteJSON.percent(in: ["percent": 0.39]) == 0.39)
     #expect(RemoteJSON.percent(in: ["other": 1]) == nil)
+    // A bare "percent" is direction-ambiguous — the vendor dashboards show
+    // percent *remaining* — so it is not accepted at all.
+    #expect(RemoteJSON.percent(in: ["percent": 0.39]) == nil)
+}
+
+@Test func windowsEnumeratesPerModelLimits() {
+    // Claude grew a weekly "Fable" cap; a hardcoded sonnet/opus list drops it.
+    let payload: [String: Any] = [
+        "five_hour": ["utilization": 15],
+        "seven_day": ["utilization": 22],
+        "seven_day_fable": ["utilization": 0],
+        "seven_day_opus": ["utilization": 3],
+    ]
+
+    let found = RemoteJSON.windows(in: payload, prefixes: ["seven_day_", "sevenDay"], excluding: ["seven_day", "sevenDay"])
+
+    #expect(found.map(\.key) == ["seven_day_fable", "seven_day_opus"])
 }
 
 @Test func percentRejectsNonFiniteValues() {

@@ -37,10 +37,11 @@ public struct CodexOAuthUsageProvider: ProviderClient {
         var rows = [UsageRow]()
         if let primary { rows.append(RemoteJSON.row(key: "session", title: "Session", iconName: "timer", object: primary)) }
         if let weekly { rows.append(RemoteJSON.row(key: "weekly", title: "Weekly", iconName: "calendar", object: weekly)) }
+        let unreadable = RemoteJSON.unreadableWindow(in: rows)
 
         return ProviderSnapshot(
             providerID: .codex,
-            status: percent == nil && rows.isEmpty ? .noData : .ok,
+            status: unreadable != nil ? .error : (percent == nil && rows.isEmpty ? .noData : .ok),
             usedTokens: nil,
             unit: .tokens,
             usagePercent: percent,
@@ -51,7 +52,8 @@ public struct CodexOAuthUsageProvider: ProviderClient {
             sources: [.oauth, .api],
             confidence: .high,
             isEstimated: false,
-            message: rows.isEmpty ? "OAuth usage returned no windows" : nil,
+            message: unreadable.map { "Usage payload changed: no percentage in the \($0.title) window" }
+                ?? (rows.isEmpty ? "OAuth usage returned no windows" : nil),
             authSummary: "Codex OAuth",
             planName: RemoteJSON.planName(in: object, keys: ["plan_type", "planType", "plan"]),
             usageRows: rows

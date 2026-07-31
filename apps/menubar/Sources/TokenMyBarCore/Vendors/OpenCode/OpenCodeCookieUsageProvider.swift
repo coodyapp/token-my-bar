@@ -6,9 +6,13 @@ public struct OpenCodeCookieUsageProvider: ProviderClient {
     public init() {}
 
     public func snapshot() async -> ProviderSnapshot {
+        // Read per refresh, not per provider: the app builds its providers once
+        // at launch, and an override added to recover from a vendor change has
+        // to apply without relaunching.
+        let config = AppConfig.load()
         do {
-            let cookie = try await BlockingIO.run { try Self.cookieHeader() }
-            let workspaceIDs = try await Self.workspaceIDs(cookie: cookie)
+            let cookie = try await BlockingIO.run { try Self.cookieHeader(config: config) }
+            let workspaceIDs = try await Self.workspaceIDs(cookie: cookie, configuredID: config.openCodeWorkspaceID)
             var lastError: Error?
             for workspaceID in workspaceIDs {
                 do {
@@ -59,9 +63,11 @@ public struct OpenCodeCookieUsageProvider: ProviderClient {
             rows.append(RemoteJSON.row(key: "monthly", title: "Monthly Usage", iconName: "calendar.badge.clock", object: monthly))
         }
 
+        let unreadable = RemoteJSON.unreadableWindow(in: rows)
+
         return ProviderSnapshot(
             providerID: .opencode,
-            status: percent == nil && rows.isEmpty ? .noData : .ok,
+            status: unreadable != nil ? .error : (percent == nil && rows.isEmpty ? .noData : .ok),
             usedTokens: nil,
             unit: .tokens,
             usagePercent: percent,
@@ -72,7 +78,8 @@ public struct OpenCodeCookieUsageProvider: ProviderClient {
             sources: [.browserCookie, .api],
             confidence: .medium,
             isEstimated: false,
-            message: rows.isEmpty ? "Cookie usage returned no windows" : nil,
+            message: unreadable.map { "Usage payload changed: no percentage in the \($0.title) window" }
+                ?? (rows.isEmpty ? "Cookie usage returned no windows" : nil),
             authSummary: "OpenCode cookie",
             // Usage always comes from the Go workspace page, so default the
             // badge to "Go" when the page carries no explicit plan field.
@@ -81,10 +88,15 @@ public struct OpenCodeCookieUsageProvider: ProviderClient {
         )
     }
 
+    /// Resolves the cookie header: `TOKEN_MY_BAR_OPENCODE_COOKIE`, then
+    /// `[opencode] cookie` from the config file (the app's only route, since it
+    /// inherits no shell environment), then browser import.
+    ///
     /// Reads browser cookie stores and the Keychain, both of which block on user
     /// consent prompts: call it through `BlockingIO`.
-    static func cookieHeader() throws -> String {
-        if let cookie = ProcessInfo.processInfo.environment["TOKEN_MY_BAR_OPENCODE_COOKIE"], !cookie.isEmpty {
+    static func cookieHeader(config: AppConfig) throws -> String {
+        for override in [ProcessInfo.processInfo.environment["TOKEN_MY_BAR_OPENCODE_COOKIE"], config.openCodeCookie] {
+            guard let cookie = override, !cookie.isEmpty else { continue }
             return cookie.hasPrefix("Cookie:") ? String(cookie.dropFirst("Cookie:".count)).trimmingCharacters(in: .whitespaces) : cookie
         }
         if let imported = BrowserCookieImporter.cookieHeader(domain: "opencode.ai"), !imported.isEmpty {
@@ -98,12 +110,14 @@ public struct OpenCodeCookieUsageProvider: ProviderClient {
 
     /// Resolves candidate workspace IDs.
     ///
-    /// Uses the configured override when present, otherwise calls the
-    /// `workspaces` server function (`GET /_server?id=…` with an `X-Server-Id`
-    /// header) and extracts every `wrk_…` identifier from the serialized JS
-    /// response, preserving order.
-    private static func workspaceIDs(cookie: String) async throws -> [String] {
-        if let override = ProcessInfo.processInfo.environment["TOKEN_MY_BAR_OPENCODE_WORKSPACE_ID"], !override.isEmpty {
+    /// Uses the configured override when present — env first, then the config
+    /// file's `[opencode] workspace_id` — otherwise calls the `workspaces`
+    /// server function (`GET /_server?id=…` with an `X-Server-Id` header) and
+    /// extracts every `wrk_…` identifier from the serialized JS response,
+    /// preserving order.
+    private static func workspaceIDs(cookie: String, configuredID: String?) async throws -> [String] {
+        for override in [ProcessInfo.processInfo.environment["TOKEN_MY_BAR_OPENCODE_WORKSPACE_ID"], configuredID] {
+            guard let override, !override.isEmpty else { continue }
             let candidate = override.components(separatedBy: "/").last ?? override
             // Only trust a well-formed id. A malformed override (path traversal,
             // query chars) falls through to the server lookup instead of being

@@ -70,9 +70,14 @@ enum RemoteJSON {
     /// verified against live payloads. Small values pass through unscaled:
     /// Codex sends `used_percent: 1` meaning 1%, so a 0...1 "fraction"
     /// heuristic would misread it as 100%.
+    ///
+    /// Only keys that name the direction are accepted. A bare `percent` could
+    /// equally be percent *remaining* — the vendor dashboards show that number —
+    /// and guessing wrong inverts the reading, which is worse than reporting
+    /// nothing and saying so.
     static func percent(in object: [String: Any]) -> Double? {
         guard let raw = double(object, keys: [
-            "usagePercent", "usage_percent", "percent", "percentUsed",
+            "usagePercent", "usage_percent", "percentUsed",
             "used_percent", "utilization", "usedPercent",
         ]) else { return nil }
         return normalizePercent(raw)
@@ -115,27 +120,50 @@ enum RemoteJSON {
         return ISO8601DateFormatter().date(from: value)
     }
 
-    static func resetSubtitle(in object: [String: Any], now: Date = Date()) -> String? {
-        guard let reset = resetDate(in: object, now: now) else { return nil }
-        return resetSubtitle(for: reset, now: now)
+    /// The first window the vendor sent whose percentage this build could not
+    /// read. Providers report it as an error: a renamed field must not surface
+    /// as a confident reading.
+    static func unreadableWindow(in rows: [UsageRow]) -> UsageRow? {
+        rows.first { $0.percent == nil }
     }
 
-    static func resetSubtitle(for reset: Date, now: Date = Date()) -> String {
-        let minutes = max(0, Int(reset.timeIntervalSince(now) / 60))
-        if minutes >= 24 * 60 { return "Resets in \(minutes / (24 * 60))d \((minutes % (24 * 60)) / 60)h" }
-        if minutes >= 60 { return "Resets in \(minutes / 60)h \(minutes % 60)m" }
-        return "Resets in \(minutes)m"
+    /// Every nested window whose key begins with one of `prefixes`, in sorted key
+    /// order. Vendors add per-model limits over time — Claude grew a "Fable"
+    /// weekly window — and enumerating them means a new one shows up instead of
+    /// being silently dropped by a hardcoded key list.
+    static func windows(
+        in object: Any,
+        prefixes: [String],
+        excluding: Set<String> = [],
+        depth: Int = 0
+    ) -> [(key: String, object: [String: Any])] {
+        guard depth < maxSearchDepth, let dictionary = object as? [String: Any] else { return [] }
+        var found: [(key: String, object: [String: Any])] = []
+        for (key, value) in dictionary {
+            guard let window = value as? [String: Any] else { continue }
+            if !excluding.contains(key), prefixes.contains(where: { key.hasPrefix($0) }), key.count > (prefixes.first(where: { key.hasPrefix($0) })?.count ?? 0) {
+                found.append((key, window))
+            }
+            found.append(contentsOf: windows(in: window, prefixes: prefixes, excluding: excluding, depth: depth + 1))
+        }
+        return found.sorted { $0.key < $1.key }
     }
 
+    /// Builds a usage row for one window.
+    ///
+    /// A window the vendor sent but whose percent field this build does not
+    /// recognise yields `percent == nil`, never 0: reporting a renamed field as
+    /// "0% used" tells the user they have a full tank when they may have none.
+    /// Callers surface that as an error rather than a reading.
     static func row(key: String, title: String, iconName: String? = nil, object: [String: Any], now: Date = Date(), idleDetail: String? = nil) -> UsageRow {
-        let percent = percent(in: object) ?? 0
-        let resetSub = resetSubtitle(in: object, now: now)
+        let percent = percent(in: object)
         return UsageRow(
             key: key,
             title: title,
-            value: "\(Int(percent.rounded()))%",
-            detail: resetSub ?? idleDetail,
+            value: percent.map { "\(Int($0.rounded()))%" } ?? "—",
+            detail: idleDetail,
             iconName: iconName,
+            resetAt: resetDate(in: object, now: now),
             percent: percent,
             unit: .tokens
         )

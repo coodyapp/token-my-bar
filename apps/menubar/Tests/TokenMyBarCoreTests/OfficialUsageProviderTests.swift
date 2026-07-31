@@ -34,17 +34,34 @@ import Testing
 }
 
 @Test func claudeOAuthSnapshotReadsExpectedWindows() {
+    // Per-model weekly caps are enumerated, not listed by name: the live account
+    // that shows "Fable" alongside "All models" proved a hardcoded sonnet/opus
+    // list drops whatever model the plan gains next.
     let snapshot = ClaudeOAuthUsageProvider.snapshot(from: [
         "five_hour": ["utilization": 29, "resetInSec": 4_320],
         "seven_day": ["utilization": 47, "resetInSec": 79_200],
         "seven_day_sonnet": ["utilization": 4],
+        "seven_day_fable": ["utilization": 0],
         "extra_usage": ["is_enabled": true, "monthly_limit": 20_000, "used_credits": 7_788],
     ])
 
     #expect(snapshot.status == .ok)
     #expect(snapshot.providerID == .claudeCode)
     #expect(snapshot.usagePercent == 29)
-    #expect(snapshot.usageRows.map(\.key) == ["session", "weekly", "sonnet", "extra-usage"])
+    #expect(snapshot.usageRows.map(\.key) == ["session", "weekly", "seven_day_fable", "seven_day_sonnet", "extra-usage"])
+    #expect(snapshot.usageRows.map(\.title) == ["Session", "Weekly", "Fable only", "Sonnet only", "Extra usage"])
+}
+
+@Test func claudeOAuthSnapshotReportsARenamedPercentFieldAsAnError() {
+    // A field rename must not read as "0% used" — that tells the user they have a
+    // full tank when the window may be spent.
+    let snapshot = ClaudeOAuthUsageProvider.snapshot(from: [
+        "five_hour": ["utilization_pct": 29, "resetInSec": 4_320],
+    ])
+
+    #expect(snapshot.status == .error)
+    #expect(snapshot.message?.contains("Session") == true)
+    #expect(snapshot.usageRows.first?.percent == nil)
 }
 
 @Test func opencodeCookieSnapshotReadsRollingWeeklyMonthly() {
