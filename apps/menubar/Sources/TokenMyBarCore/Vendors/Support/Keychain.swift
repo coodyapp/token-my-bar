@@ -11,9 +11,43 @@ import Security
 /// access dialog, which is the explicit, OS-enforced user consent the privacy
 /// doc requires. We never bypass that prompt.
 enum Keychain {
+    /// Each read of another app's item can raise the consent dialog, and a
+    /// background refresh every few minutes turns that into a password prompt
+    /// several times an hour. Reads are answered from memory for an hour so a
+    /// running app asks once; `invalidate()` drops the cache when the user
+    /// explicitly asks to refresh, which is when re-asking is what they want.
+    ///
+    /// Failures are cached too — a denied or absent item re-prompting on every
+    /// tick is the same problem wearing a different hat.
+    private static let cacheTTL: TimeInterval = 3600
+    private static let cacheLock = NSLock()
+    nonisolated(unsafe) private static var cache: [String: (data: [Data], readAt: Date)] = [:]
+
+    static func invalidate() {
+        cacheLock.lock()
+        cache.removeAll()
+        cacheLock.unlock()
+    }
+
+    private static func cached(_ key: String, now: Date = Date()) -> [Data]? {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        guard let entry = cache[key], now.timeIntervalSince(entry.readAt) < cacheTTL else { return nil }
+        return entry.data
+    }
+
+    private static func store(_ key: String, _ value: [Data], now: Date = Date()) {
+        cacheLock.lock()
+        cache[key] = (value, now)
+        cacheLock.unlock()
+    }
+
     /// Returns the raw secret data for a generic-password item, or `nil` when
     /// the item is absent or access is denied.
     static func genericPassword(service: String, account: String? = nil) -> Data? {
+        let key = "one:\(service)|\(account ?? "")"
+        if let hit = cached(key) { return hit.first }
+
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -26,7 +60,11 @@ enum Keychain {
 
         var item: CFTypeRef?
         let status = SecItemCopyMatching(query as CFDictionary, &item)
-        guard status == errSecSuccess, let data = item as? Data else { return nil }
+        guard status == errSecSuccess, let data = item as? Data else {
+            store(key, [])
+            return nil
+        }
+        store(key, [data])
         return data
     }
 
@@ -50,6 +88,14 @@ enum Keychain {
     /// duplicates — resolve to distinct secrets instead of collapsing to the
     /// first match `kSecMatchLimitOne` happens to return.
     static func genericPasswords(service: String) -> [Data] {
+        let cacheKey = "all:\(service)"
+        if let hit = cached(cacheKey) { return hit }
+        let found = readGenericPasswords(service: service)
+        store(cacheKey, found)
+        return found
+    }
+
+    private static func readGenericPasswords(service: String) -> [Data] {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,

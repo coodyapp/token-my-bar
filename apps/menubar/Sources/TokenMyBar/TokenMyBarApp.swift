@@ -156,7 +156,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MARK: Actions
 
     @objc private func refreshFromMenu() {
-        Task { await refresh(force: true) }
+        Task {
+            // A refresh the user asked for re-reads credentials; the timer's does
+            // not, so a consent prompt cannot reappear every few minutes.
+            await refresher.forgetCachedCredentials()
+            await refresh(force: true)
+        }
     }
 
     @objc private func toggleLaunchAtLogin() {
