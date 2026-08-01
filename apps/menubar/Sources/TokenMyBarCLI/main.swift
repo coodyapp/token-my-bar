@@ -71,7 +71,12 @@ struct Status: AsyncParsableCommand {
                 print("  note: \(message)")
             }
             for row in snapshot.usageRows {
-                let extras = [row.subtitle, row.detail].compactMap { $0 }.joined(separator: " · ")
+                // Countdowns are formatted at display time, so the CLI has to ask
+                // for one the same way the popover does rather than printing a
+                // `detail` string that no longer carries it.
+                let extras = [row.subtitle, row.resetText() ?? row.detail]
+                    .compactMap { $0 }
+                    .joined(separator: " · ")
                 let suffix = extras.isEmpty ? "" : " — \(extras)"
                 print("  \(row.title): \(row.value)\(suffix)")
             }

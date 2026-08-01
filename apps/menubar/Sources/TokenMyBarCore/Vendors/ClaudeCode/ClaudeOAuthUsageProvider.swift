@@ -25,7 +25,50 @@ public struct ClaudeOAuthUsageProvider: ProviderClient {
         }
     }
 
-    /// "seven_day_sonnet" -> "Sonnet only", "seven_day_fable" -> "Fable only".
+    /// Rows from the `limits` array, in the order Claude sends them.
+    ///
+    /// Each entry names its own window (`kind`) and, for a per-model cap, the
+    /// model under `scope.model.display_name` — so a cap the account gains later
+    /// is labelled correctly without a code change.
+    static func rows(fromLimits object: [String: Any]) -> [UsageRow] {
+        guard let limits = object["limits"] as? [[String: Any]] else { return [] }
+        return limits.map { limit in
+            let kind = limit["kind"] as? String ?? "limit"
+            let model = (limit["scope"] as? [String: Any])
+                .flatMap { $0["model"] as? [String: Any] }
+                .flatMap { $0["display_name"] as? String }
+            // `percent` is rejected by the shared reader because the field name
+            // alone does not say used-or-remaining. Here it does: this structure
+            // is percent used, verified against the account's own usage screen.
+            let percent = RemoteJSON.double(limit, keys: ["percent", "utilization"])
+                .flatMap(RemoteJSON.normalizePercent)
+            let reset = RemoteJSON.resetDate(in: limit)
+            return UsageRow(
+                key: Self.rowKey(forLimitKind: kind, model: model),
+                title: Self.title(forLimitKind: kind, model: model),
+                value: percent.map { "\(Int($0.rounded()))%" } ?? "—",
+                detail: reset == nil ? "Starts when a message is sent" : nil,
+                iconName: model != nil ? "cpu" : (kind == "session" ? "timer" : "calendar"),
+                resetAt: reset,
+                percent: percent,
+                unit: .tokens
+            )
+        }
+    }
+
+    /// Keeps the stable keys the rest of the app switches on (`session`,
+    /// `weekly`) so window labelling and icons keep working.
+    private static func rowKey(forLimitKind kind: String, model: String?) -> String {
+        if let model { return "weekly-\(model.lowercased())" }
+        return kind == "session" ? "session" : "weekly"
+    }
+
+    private static func title(forLimitKind kind: String, model: String?) -> String {
+        if let model { return "\(model) only" }
+        return kind == "session" ? "Session" : "Weekly"
+    }
+
+    /// "seven_day_sonnet" -> "Sonnet only" for accounts still on the older shape.
     static func modelWindowTitle(for key: String) -> String {
         let model = key
             .replacingOccurrences(of: "seven_day_", with: "")
@@ -38,12 +81,19 @@ public struct ClaudeOAuthUsageProvider: ProviderClient {
 
     /// Extracts the plan badge ("Pro", "Max", "Team", …) from the stored
     /// credential payload; the usage API response itself carries no plan field.
+    /// The rate-limit tier wins over the subscription type: both are present and
+    /// they disagree — a Max 5x account reports `subscriptionType: "max"` with
+    /// `rateLimitTier: "default_claude_max_5x"` — and the tier is what the
+    /// percentages on screen are a share of.
     static func planFromKeychainPayload(_ object: Any) -> String? {
         guard let root = object as? [String: Any] else { return nil }
         let oauth = root["claudeAiOauth"] as? [String: Any] ?? root
-        return RemoteJSON.planName(in: oauth, keys: [
-            "subscriptionType", "subscription_type", "rateLimitTier", "rate_limit_tier",
-        ])
+        let tier = RemoteJSON.findString(in: oauth, keys: ["rateLimitTier", "rate_limit_tier"])
+            .map { $0.replacingOccurrences(of: "default_claude_", with: "") }
+        guard let tier, !tier.isEmpty else {
+            return RemoteJSON.planName(in: oauth, keys: ["subscriptionType", "subscription_type"])
+        }
+        return RemoteJSON.planName(in: ["tier": tier], keys: ["tier"])
     }
 
     static func snapshot(from object: [String: Any], fallbackPlanName: String? = nil) -> ProviderSnapshot {
@@ -51,18 +101,24 @@ public struct ClaudeOAuthUsageProvider: ProviderClient {
         let weekly = RemoteJSON.findObject(in: object, keys: ["seven_day", "sevenDay"])
         let extra = RemoteJSON.findObject(in: object, keys: ["extra_usage", "extraUsage"])
         let percent = RemoteJSON.percent(in: session ?? weekly ?? object)
-        var rows = [UsageRow]()
-        if let session { rows.append(RemoteJSON.row(key: "session", title: "Session", iconName: "timer", object: session, idleDetail: "Starts when a message is sent")) }
-        if let weekly { rows.append(RemoteJSON.row(key: "weekly", title: "Weekly", iconName: "calendar", object: weekly, idleDetail: "Starts when a message is sent")) }
-        // Per-model weekly caps are enumerated rather than listed, so a model the
-        // plan gains later ("Fable") appears without a code change.
-        for window in RemoteJSON.windows(in: object, prefixes: ["seven_day_", "sevenDay"], excluding: ["seven_day", "sevenDay"]) {
-            rows.append(RemoteJSON.row(
-                key: window.key,
-                title: Self.modelWindowTitle(for: window.key),
-                iconName: "cpu",
-                object: window.object
-            ))
+        // `limits` is the shape Claude Code's own usage screen reads: one entry per
+        // window, each naming its scope. It carries per-model caps the top-level
+        // `seven_day_*` keys report as null, so a plan's "Fable" limit only exists
+        // here. The older keys stay as the fallback for accounts without it.
+        var rows = Self.rows(fromLimits: object)
+        if rows.isEmpty {
+            if let session { rows.append(RemoteJSON.row(key: "session", title: "Session", iconName: "timer", object: session, idleDetail: "Starts when a message is sent")) }
+            if let weekly { rows.append(RemoteJSON.row(key: "weekly", title: "Weekly", iconName: "calendar", object: weekly, idleDetail: "Starts when a message is sent")) }
+            // Accounts still on the older shape carry per-model caps as
+            // `seven_day_<model>` keys; enumerate rather than name them.
+            for window in RemoteJSON.windows(in: object, prefixes: ["seven_day_", "sevenDay"], excluding: ["seven_day", "sevenDay"]) {
+                rows.append(RemoteJSON.row(
+                    key: window.key,
+                    title: Self.modelWindowTitle(for: window.key),
+                    iconName: "cpu",
+                    object: window.object
+                ))
+            }
         }
         if let extra, let extraRow = Self.extraUsageRow(extra) { rows.append(extraRow) }
         let unreadable = RemoteJSON.unreadableWindow(in: rows)

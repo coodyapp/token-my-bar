@@ -95,10 +95,10 @@ enum RemoteJSON {
         // Absolute timestamps win over countdown fields: Codex sends both, and
         // its reset_after_seconds is the static window length (always 5h/7d),
         // not the time actually left.
-        if let timestamp = double(object, keys: ["resetAt", "reset_at", "resetsAt", "resets_at"]) {
+        if let timestamp = double(object, keys: ["resetAt", "reset_at", "resetsAt", "resets_at", "resetTime", "reset_time"]) {
             return Date(timeIntervalSince1970: timestamp > 10_000_000_000 ? timestamp / 1000 : timestamp)
         }
-        if let iso = string(object, keys: ["resetAt", "reset_at", "resetsAt", "resets_at", "renewAt"]),
+        if let iso = string(object, keys: ["resetAt", "reset_at", "resetsAt", "resets_at", "renewAt", "resetTime", "reset_time"]),
            let date = parseISO8601(iso) {
             return date
         }
@@ -117,7 +117,15 @@ enum RemoteJSON {
         let withFraction = ISO8601DateFormatter()
         withFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         if let date = withFraction.date(from: value) { return date }
-        return ISO8601DateFormatter().date(from: value)
+        if let date = ISO8601DateFormatter().date(from: value) { return date }
+        // Anthropic sends microseconds ("…:00.084152+00:00"); ISO8601DateFormatter
+        // parses at most milliseconds and returns nil for the rest, which silently
+        // cost every Claude row its reset time.
+        guard let dot = value.firstIndex(of: "."),
+              let fractionEnd = value[dot...].firstIndex(where: { !$0.isNumber && $0 != "." })
+        else { return nil }
+        let truncated = value[..<dot] + value[fractionEnd...]
+        return ISO8601DateFormatter().date(from: String(truncated))
     }
 
     /// The first window the vendor sent whose percentage this build could not
@@ -214,7 +222,7 @@ enum RemoteJSON {
         return try await fetchData(request, session: session, attempt: attempt + 1)
     }
 
-    private static func double(_ object: [String: Any], keys: [String]) -> Double? {
+    static func double(_ object: [String: Any], keys: [String]) -> Double? {
         for key in keys {
             if let value = object[key] as? Double { return value }
             if let value = object[key] as? Int { return Double(value) }

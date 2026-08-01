@@ -33,6 +33,61 @@ import Testing
     #expect(snapshot.resetAt == Date(timeIntervalSince1970: 1_782_975_710))
 }
 
+@Test func claudeOAuthReadsTheLimitsArrayIncludingPerModelCaps() {
+    // Recorded from the live payload of a Max 5x account: the top-level
+    // seven_day_* keys are all null and every real window — including the
+    // per-model "Fable" cap the usage screen shows — lives in `limits`.
+    let snapshot = ClaudeOAuthUsageProvider.snapshot(from: [
+        "five_hour": ["utilization": 43.0, "resets_at": "2026-08-02T00:10:00.084152+00:00"],
+        "seven_day": ["utilization": 4.0, "resets_at": "2026-08-08T18:00:00.084173+00:00"],
+        "seven_day_sonnet": NSNull(),
+        "limits": [
+            ["kind": "session", "group": "session", "percent": 43, "resets_at": "2026-08-02T00:10:00.084152+00:00"],
+            ["kind": "weekly_all", "group": "weekly", "percent": 4, "resets_at": "2026-08-08T18:00:00.084173+00:00"],
+            ["kind": "weekly_scoped", "group": "weekly", "percent": 0, "resets_at": NSNull(),
+             "scope": ["model": ["display_name": "Fable"]]],
+        ],
+    ])
+
+    #expect(snapshot.status == .ok)
+    #expect(snapshot.usageRows.map(\.title) == ["Session", "Weekly", "Fable only"])
+    #expect(snapshot.usageRows.map(\.percent) == [43, 4, 0])
+    // Microsecond-precision timestamps must still parse into a reset date.
+    #expect(snapshot.usageRows[0].resetAt != nil)
+    #expect(snapshot.usageRows[1].resetAt != nil)
+}
+
+@Test func claudePlanBadgeUsesTheRateLimitTier() {
+    // The same account reports subscriptionType "max" and rateLimitTier
+    // "default_claude_max_5x"; the tier is what the percentages are a share of.
+    let payload: [String: Any] = ["claudeAiOauth": [
+        "subscriptionType": "max",
+        "rateLimitTier": "default_claude_max_5x",
+    ]]
+
+    #expect(ClaudeOAuthUsageProvider.planFromKeychainPayload(payload) == "Max 5x")
+    #expect(ClaudeOAuthUsageProvider.planFromKeychainPayload(["claudeAiOauth": ["subscriptionType": "pro"]]) == "Pro")
+}
+
+@Test func codexNamesTheWindowByItsRealLength() {
+    // A Plus account's `primary_window` is a 7-day window; calling it "Session"
+    // is how a spent week reads as a quiet afternoon.
+    let snapshot = CodexOAuthUsageProvider.snapshot(from: [
+        "plan_type": "plus",
+        "rate_limit": [
+            "primary_window": ["used_percent": 0, "limit_window_seconds": 604_800, "reset_at": 1_786_221_052],
+            "secondary_window": NSNull(),
+        ],
+    ])
+
+    #expect(snapshot.planName == "Plus")
+    #expect(snapshot.usageRows.map(\.title) == ["Weekly"])
+    #expect(snapshot.usageRows.first?.resetAt == Date(timeIntervalSince1970: 1_786_221_052))
+    // A genuine 5-hour window still reads as the session.
+    let session = CodexOAuthUsageProvider.windowRow(["used_percent": 12, "limit_window_seconds": 18_000], fallbackKey: "weekly")
+    #expect(session.title == "Session")
+}
+
 @Test func claudeOAuthSnapshotReadsExpectedWindows() {
     // Per-model weekly caps are enumerated, not listed by name: the live account
     // that shows "Fable" alongside "All models" proved a hardcoded sonnet/opus
