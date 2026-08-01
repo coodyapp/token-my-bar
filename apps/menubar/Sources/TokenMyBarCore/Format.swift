@@ -2,6 +2,13 @@ import Foundation
 
 /// Shared display-formatting helpers used across providers.
 public enum Format {
+    /// A spend figure in USD: "$21.40", "$0.00". Two decimals always, because a
+    /// rounded-away cent reads as an estimate when the vendor gave an exact number.
+    public static func money(_ amount: Double) -> String {
+        guard amount.isFinite else { return "—" }
+        return String(format: "$%.2f", amount)
+    }
+
     /// How old a reading is, short enough to sit beside a vendor name:
     /// "just now", "12m old", "3h old", "25d old".
     public static func compactAge(since taken: Date, now: Date = Date()) -> String {

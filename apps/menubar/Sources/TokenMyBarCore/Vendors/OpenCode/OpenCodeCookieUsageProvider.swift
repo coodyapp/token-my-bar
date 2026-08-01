@@ -18,7 +18,11 @@ public struct OpenCodeCookieUsageProvider: ProviderClient {
                 do {
                     let object = try await Self.usageObject(cookie: cookie, workspaceID: workspaceID)
                     let snapshot = Self.snapshot(from: object)
-                    if snapshot.status == .ok { return snapshot }
+                    // Spend lives only in the local database, and this provider
+                    // succeeding means the local one is never consulted — so the
+                    // one figure the official page does not carry would never be
+                    // seen. Best-effort: no spend must never cost the percentages.
+                    if snapshot.status == .ok { return snapshot.appending(Self.spendRows()) }
                 } catch {
                     lastError = error
                 }
@@ -103,6 +107,15 @@ public struct OpenCodeCookieUsageProvider: ProviderClient {
             return imported
         }
         throw AuthError.missingCredentials
+    }
+
+    /// The "Spent" row, read from OpenCode's own local database.
+    ///
+    /// Empty when the database is absent or records nothing — a missing figure is
+    /// better than a zero that looks like a measurement.
+    static func spendRows() -> [UsageRow] {
+        guard let usage = try? OpenCodeLocalUsageProvider().readUsage(), usage.costUSD > 0 else { return [] }
+        return usage.rows.filter { $0.key == "spend" }
     }
 
     static let workspacesServerFunctionID = "def39973159c7f0483d8793a822b8dbb10d067e12c65455fcb4608459ba0234f"

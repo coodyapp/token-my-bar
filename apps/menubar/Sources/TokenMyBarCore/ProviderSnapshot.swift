@@ -214,6 +214,32 @@ public struct ProviderSnapshot: Codable, Equatable, Sendable, Identifiable {
         self.usageRows = usageRows
     }
 
+    /// The same reading with extra rows appended, for a detail one source knows
+    /// and another does not.
+    public func appending(_ extraRows: [UsageRow]) -> ProviderSnapshot {
+        guard !extraRows.isEmpty else { return self }
+        return ProviderSnapshot(
+            providerID: providerID,
+            displayName: displayName,
+            status: status,
+            usedTokens: usedTokens,
+            limitTokens: limitTokens,
+            unit: unit,
+            usagePercent: usagePercent,
+            windowName: windowName,
+            resetAt: resetAt,
+            refreshedAt: refreshedAt,
+            primarySource: primarySource,
+            sources: sources,
+            confidence: confidence,
+            isEstimated: isEstimated,
+            message: message,
+            authSummary: authSummary,
+            planName: planName,
+            usageRows: usageRows + extraRows
+        )
+    }
+
     /// Cached data re-presented as the current view. `status` overrides the
     /// default so a state the user must act on (expired auth) is not flattened
     /// into "stale", which reads as merely out of date.

@@ -59,7 +59,19 @@ credential, and only for enabled providers. The full list:
 | Codex | `GET https://chatgpt.com/backend-api/wham/usage` |
 | Claude | `GET https://api.anthropic.com/api/oauth/usage` |
 | OpenCode | `GET https://opencode.ai/_server?id=<fn>` then `GET https://opencode.ai/workspace/<wrk_…>/go` |
-| Antigravity | `POST https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota` (empty `{}` body) and, for the plan badge only, `POST https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist` |
+| Antigravity | `POST http://127.0.0.1:<port>/exa.language_server_pb.LanguageServerService/GetUserStatus` to the language server the running IDE hosts — this never leaves the machine. Only when Antigravity is closed: `POST https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota` (empty `{}` body) and, for the plan badge, `…:loadCodeAssist` |
+
+One request is not a vendor call:
+
+| Purpose | Request |
+|---|---|
+| Update check | `GET https://api.github.com/repos/coodyapp/token-my-bar/releases/latest`, unauthenticated, at most once every 24 hours |
+
+The update check sends no identifier — no account, no machine id, no version of
+yours. It reads the latest published tag and compares it locally. GitHub sees an
+anonymous request for a public page, the same as opening the releases page in a
+browser. Nothing is downloaded or installed; the app only tells you a newer
+version exists.
 
 Nothing is sent to a TokenMyBar server; there is no TokenMyBar server. Request
 bodies carry no prompts, completions, or file contents — the Antigravity quota

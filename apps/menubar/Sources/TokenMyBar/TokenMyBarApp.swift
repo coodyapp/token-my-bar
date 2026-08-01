@@ -30,6 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var refreshTimer: Timer?
     private var snapshots: [ProviderSnapshot] = []
     private var isRefreshing = false
+    private var availableUpdate: String?
     // Matches PopoverView's pinned width; the hosting controller's
     // preferredContentSize lets SwiftUI drive height from there.
     private let popoverWidth: CGFloat = 380
@@ -67,6 +68,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             snapshots = await refresher.cached(enabled: settings.enabledProviders)
             render()
             await refresh()
+            // After the numbers, never before them: an update notice must not
+            // delay the reason the app exists.
+            availableUpdate = await UpdateChecker(currentVersion: Self.bundleVersion).availableUpdate()
+            if availableUpdate != nil { render() }
         }
     }
 
@@ -193,8 +198,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSApp.terminate(nil)
     }
 
+    static var bundleVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
+    }
+
     private func aboutPanelOptions() -> [NSApplication.AboutPanelOptionKey: Any] {
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1"
+        let version = Self.bundleVersion
         let credits = NSAttributedString(
             string: "Live AI token usage for Codex, Claude Code, and OpenCode — right in your menu bar.",
             attributes: [.font: NSFont.systemFont(ofSize: 11)]
@@ -241,6 +250,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         let actions = PopoverActions(
             isRefreshing: isRefreshing,
+            availableUpdate: availableUpdate,
             onRefresh: { [weak self] in self?.refreshFromMenu() },
             onSettings: { [weak self] in self?.openSettings() },
             onAbout: { [weak self] in self?.openAbout() },

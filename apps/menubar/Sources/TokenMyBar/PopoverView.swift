@@ -4,6 +4,9 @@ import TokenMyBarCore
 
 struct PopoverActions {
     var isRefreshing: Bool
+    /// Set when a newer release exists, so an install that can never update
+    /// itself at least says so.
+    var availableUpdate: String?
     var onRefresh: () -> Void
     var onSettings: () -> Void
     var onAbout: () -> Void
@@ -53,6 +56,11 @@ struct PopoverView: View {
             Divider()
 
             content
+
+            if let update = actions.availableUpdate {
+                Divider()
+                UpdateBanner(version: update)
+            }
         }
         .frame(width: Metrics.popoverWidth)
         .background(.regularMaterial)
@@ -81,6 +89,39 @@ struct PopoverView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Update
+
+/// Shown only when a newer release exists. The app cannot update itself, so the
+/// most it can honestly do is say so and open the page.
+private struct UpdateBanner: View {
+    let version: String
+    @State private var isHovered = false
+
+    var body: some View {
+        Link(destination: URL(string: UpdateChecker.releasesPage)!) {
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.down.circle")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.tint)
+                Text("Update available — \(version)")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.primary)
+                Spacer(minLength: 8)
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
+            .background(Color.primary.opacity(isHovered ? 0.06 : 0))
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .accessibilityLabel("Update available, version \(version). Opens the releases page.")
     }
 }
 
