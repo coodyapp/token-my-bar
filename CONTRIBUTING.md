@@ -67,7 +67,8 @@ refactor(menubar): compact native popover layout + native header buttons
 ```
 
 Use a `type(scope): summary` subject — common types are `feat`, `fix`, and
-`refactor`; common scopes are `menubar`, `codex`, and `www`.
+`refactor`; common scopes are `menubar`, `core`, `www`, and a vendor name
+(`codex`, `claude`, `opencode`, `antigravity`).
 
 ## Pull Requests
 

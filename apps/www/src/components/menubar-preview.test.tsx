@@ -12,9 +12,13 @@ describe("MenubarPreview", () => {
     expect(screen.getByLabelText("Claude Code")).toBeInTheDocument()
     expect(screen.getByLabelText("Antigravity")).toBeInTheDocument()
 
-    // Three windows each for the first three vendors, one row per model for
-    // Antigravity.
-    expect(screen.getAllByRole("progressbar")).toHaveLength(11)
+    // OpenCode 3 windows, Codex 2, Claude 3, Antigravity 1 group — the billed
+    // spend row carries a figure but no meter, so it adds none.
+    expect(screen.getAllByRole("progressbar")).toHaveLength(9)
+    expect(screen.getByText("Billed API spend")).toBeInTheDocument()
+    expect(screen.getByText("$21.40")).toBeInTheDocument()
+    expect(screen.getByText("Gemini models")).toBeInTheDocument()
+    expect(screen.getByText("Max 5x")).toBeInTheDocument()
   })
 
   it("exposes a refresh control", () => {

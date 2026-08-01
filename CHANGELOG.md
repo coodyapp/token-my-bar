@@ -6,6 +6,20 @@ All notable changes to TokenMyBar are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-08-01
+
+### Changed
+
+- The About panel and the app's copyright line name Antigravity and read
+  "Copyright © 2026 coody".
+- The landing page's menu bar preview and the README screenshot are regenerated
+  from the shipping app, so both show what 1.4.0 actually renders: Claude's
+  "Max 5x" badge and its Fable cap, Codex's two windows, Antigravity's single
+  grouped Gemini row on the Pro plan, and OpenCode's billed spend.
+- A row that has a figure but nothing to fill a meter with — billed spend — no
+  longer draws an empty progress bar beside a truncated number; the value gets
+  the space instead.
+
 ## [1.4.0] - 2026-08-01
 
 ### Added
@@ -409,7 +423,8 @@ First stable release.
   cache files are `0600`. Keychain access is read-only behind the standard
   macOS consent prompt. All SQLite access uses parameterized queries.
 
-[Unreleased]: https://github.com/coodyapp/token-my-bar/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/coodyapp/token-my-bar/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/coodyapp/token-my-bar/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/coodyapp/token-my-bar/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/coodyapp/token-my-bar/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/coodyapp/token-my-bar/compare/v1.1.0...v1.2.0

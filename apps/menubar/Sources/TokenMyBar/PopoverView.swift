@@ -401,13 +401,18 @@ private struct UsageRowView: View {
 
             Spacer(minLength: 12)
 
-            ProgressBar(percent: clampedPercent ?? 0, isStale: isStale)
-                .frame(width: 150, height: 6)
+            // A row with nothing to fill a bar — a spend figure, a window that has
+            // ended — gets the bar's width for its value instead of an empty meter
+            // beside a truncated number.
+            if let percent = clampedPercent {
+                ProgressBar(percent: percent, isStale: isStale)
+                    .frame(width: 150, height: 6)
+            }
 
             Text(percentText)
                 .font(.system(size: 12).monospacedDigit())
                 .foregroundStyle(.secondary)
-                .frame(width: 38, alignment: .trailing)
+                .frame(minWidth: 38, alignment: .trailing)
                 .padding(.leading, 10)
                 .lineLimit(1)
         }
