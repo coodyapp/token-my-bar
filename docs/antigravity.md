@@ -1,17 +1,33 @@
 ---
-summary: "Antigravity vendor: per-model quota from the Google Code Assist endpoint, reported as fraction remaining."
+summary: "Antigravity vendor: grouped model quota from the running language server, with the Code Assist endpoint as fallback."
 read_when:
   - Debugging Antigravity usage parsing
-  - Updating the Antigravity quota endpoint or credential resolution
-  - Reviewing the remaining-vs-used inversion or the plan-tier call
+  - Changing the language-server discovery or the Code Assist fallback
+  - Reviewing the remaining-vs-used inversion or the plan lookup
 ---
 
 # Antigravity provider
 
-Google Antigravity usage comes from the same Code Assist quota endpoint the
-Antigravity client itself calls, using the OAuth session the Antigravity /
-Gemini sign-in already stored on the Mac. One official path, and — unlike the
-other three vendors — no local fallback.
+Google Antigravity has two sources, tried in that order.
+
+**Primary — the local language server.** A running Antigravity IDE or `agy` CLI
+hosts a language server that answers Connect RPC at
+`POST /exa.language_server_pb.LanguageServerService/GetUserStatus` on a
+localhost port. This is what Antigravity's own "Models & Quota" screen reads: it
+meters models per *group* (all Gemini models share one allowance; Claude and GPT
+share another) and reports the plan name. It needs no Google token, so it
+neither expires nor depends on a permission the stored credentials lack.
+
+**Fallback — the Code Assist quota endpoint.** When Antigravity is not running,
+the OAuth session the Gemini sign-in stored is used against
+`v1internal:retrieveUserQuota`. That returns *per-model* 24-hour request buckets
+rather than the grouped allowance, and its access token lives one hour, so this
+path reports "sign in" for most of a day. It exists so a closed IDE still shows
+something, not as an equal source.
+
+TokenMyBar shows only the Gemini group. Antigravity meters Claude and GPT models
+against a separate allowance with its own reset, and listing them together reads
+as one pool that they are not.
 
 ## Auth (credential resolution order)
 

@@ -17,9 +17,11 @@ public struct ProviderRegistry: Sendable {
             FallbackProvider(primary: OpenCodeCookieUsageProvider(), fallback: OpenCodeLocalUsageProvider()),
             FallbackProvider(primary: CodexOAuthUsageProvider(), fallback: LocalJSONLUsageProvider.codex()),
             FallbackProvider(primary: ClaudeOAuthUsageProvider(), fallback: LocalJSONLUsageProvider.claude()),
-            // No local-log fallback: Antigravity keeps no per-request usage file
-            // this app can read, so the quota endpoint is the only source.
-            AntigravityUsageProvider(),
+            // The running IDE's language server reports the grouped allowance
+            // Antigravity's own screen shows and needs no token; the OAuth
+            // endpoint answers when Antigravity is closed, at per-model
+            // granularity and only while its one-hour token is alive.
+            FallbackProvider(primary: AntigravityLocalUsageProvider(), fallback: AntigravityUsageProvider()),
         ]
     }
 }

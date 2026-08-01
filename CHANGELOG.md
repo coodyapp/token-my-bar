@@ -6,6 +6,20 @@ All notable changes to TokenMyBar are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-08-01
+
+### Changed
+
+- Antigravity now reads the running IDE's language server first, which is the
+  source its own "Models & Quota" screen uses. That means the numbers finally
+  agree with it: one **grouped** row for the Gemini models rather than a row per
+  model repeating the same figure, the real consumption (2% used where the
+  previous source insisted on 0%), and the correct plan — "Pro" instead of the
+  unrelated Gemini Code Assist tier the OAuth endpoint reported.
+- The local source needs no Google token, so it does not expire. The Code Assist
+  endpoint stays as the fallback for when Antigravity is closed; its token lives
+  one hour, which is why it cannot be the primary source.
+
 ## [1.2.0] - 2026-08-01
 
 ### Added
@@ -369,7 +383,8 @@ First stable release.
   cache files are `0600`. Keychain access is read-only behind the standard
   macOS consent prompt. All SQLite access uses parameterized queries.
 
-[Unreleased]: https://github.com/coodyapp/token-my-bar/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/coodyapp/token-my-bar/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/coodyapp/token-my-bar/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/coodyapp/token-my-bar/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/coodyapp/token-my-bar/compare/v1.0.9...v1.1.0
 [1.0.9]: https://github.com/coodyapp/token-my-bar/compare/v1.0.8...v1.0.9
