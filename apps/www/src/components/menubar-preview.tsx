@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from "react"
 import {
   Calendar,
   ChartColumn,
+  CircleArrowOutUpRight,
   CircleCheck,
   Clock,
   Code,
+  Cpu,
   LoaderCircle,
   RefreshCw,
   Settings,
@@ -20,7 +22,9 @@ import { BorderTrail } from "@/components/core/border-trail"
 // 1pt = 1px: 380px popover, 14px padding, 150×6 bars, 38px percent column.
 
 type Row = {
-  key: "session" | "weekly" | "monthly"
+  // Antigravity reports one bucket per model instead of fixed windows, so its
+  // rows carry the app's `model-<id>` keys.
+  key: "session" | "weekly" | "monthly" | `model-${string}`
   title: string
   reset: string
   percent: number
@@ -104,6 +108,25 @@ const VENDORS: Vendor[] = [
       },
     ],
   },
+  {
+    name: "Antigravity",
+    icon: CircleArrowOutUpRight,
+    plan: "Standard",
+    rows: [
+      {
+        key: "model-gemini-3.1-pro",
+        title: "Gemini 3.1 Pro",
+        reset: "Resets in 23h 4m",
+        percent: 34,
+      },
+      {
+        key: "model-gemini-2.5-flash",
+        title: "Gemini 2.5 Flash",
+        reset: "Resets in 23h 4m",
+        percent: 6,
+      },
+    ],
+  },
 ]
 
 // macOS dark palette (systemRed / systemGreen / systemYellow / systemGray).
@@ -124,6 +147,15 @@ function fillColor(percent: number) {
   if (percent >= 100) return MAC.red
   if (percent >= 70) return MAC.yellow
   return MAC.gray
+}
+
+// PopoverView.metricIconName: clock for the session row, calendar for the
+// dated windows, otherwise the row's own icon — Antigravity's model rows
+// ship "cpu".
+function metricIcon(key: Row["key"]): LucideIcon {
+  if (key === "session") return Clock
+  if (key === "weekly" || key === "monthly") return Calendar
+  return Cpu
 }
 
 function prefersReducedMotion() {
@@ -171,7 +203,7 @@ function UsageBar({
   filled: boolean
   delay: number
 }) {
-  const Icon = row.key === "session" ? Clock : Calendar
+  const Icon = metricIcon(row.key)
   const target = filled ? row.percent : 0
   return (
     <div className="flex items-center">

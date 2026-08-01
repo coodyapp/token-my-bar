@@ -39,6 +39,11 @@ Optional fields:
 
 Provider-specific presentation rows live in `usageRows`. This follows the ai-usagebar lesson: providers expose genuinely different usage shapes, so rendering should preserve provider-specific rows instead of forcing everything into one flattened quota model.
 
+`usagePercent` and every row percent are always percent **used** on a 0–100
+scale. A vendor that reports something else converts at its own edge: Antigravity
+sends `remainingFraction` (0...1 of quota left) and inverts it in its provider, so
+no consumer downstream has to know the difference.
+
 Main UI shows primary source. Diagnostics can show full provenance.
 
 ## Combined Menu Bar Rule
@@ -67,7 +72,14 @@ Auth uses existing vendor sessions directly from the Mac. TokenMyBar does not pr
   first, then browser import (Chromium `v10` decryption + Firefox plaintext). A
   browser's Safe Storage Keychain key is only read when that browser holds a
   matching cookie.
+- Antigravity official usage uses OAuth from `~/.gemini/oauth_creds.json`
+  (override `TOKEN_MY_BAR_GEMINI_CREDS`), written by the Antigravity / Gemini
+  sign-in. The stored access token is short-lived and is never refreshed; an
+  expired one is reported, not renewed.
 - Local logs/SQLite remain fallback/cost-history sources and never become quota percentages unless vendor data exposes reset/limit semantics.
+- Antigravity is the one vendor with no local fallback — it is registered bare in
+  `defaultProviders()` rather than wrapped in `FallbackProvider`, because it keeps
+  no readable per-request usage file.
 - External Keychain reads rely on the OS access prompt for consent; TokenMyBar never writes or repairs other apps' Keychain items.
 
 ## Cache

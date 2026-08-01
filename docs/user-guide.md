@@ -1,11 +1,11 @@
 # TokenMyBar User Guide
 
-TokenMyBar is a native macOS menu bar app that shows AI usage from OpenCode, OpenAI Codex, and Claude Code.
+TokenMyBar is a native macOS menu bar app that shows AI usage from OpenCode, OpenAI Codex, Claude Code, and Google Antigravity.
 
 ## Requirements
 
 - macOS 14 or newer
-- Existing OpenCode, Codex, or Claude Code sessions on this Mac
+- Existing OpenCode, Codex, Claude Code, or Antigravity sessions on this Mac
 
 ## Menu Bar Display
 
@@ -20,8 +20,10 @@ Open Settings from the popover menu and choose `Display Mode`:
 ## Plan Badges
 
 Each vendor section shows your subscription plan next to the vendor name when
-it can be determined: Claude Code (e.g. `Pro`, `Max`, `Team`), OpenAI Codex
-(e.g. `Plus`), and OpenCode (`Go`).
+it can be determined: Claude Code (e.g. `Pro`, `Max 5x`), OpenAI Codex
+(e.g. `Plus`), OpenCode (`Go`), and Antigravity (e.g. `Standard`). Antigravity's
+badge comes from a separate best-effort call, so usage can be correct while the
+badge is missing.
 
 ## Vendors
 
@@ -30,8 +32,14 @@ Use `Vendors` to enable or disable:
 - OpenCode
 - Codex
 - Claude
+- Antigravity
 
 Disabled vendors are skipped during refresh and hidden from the menu bar.
+
+Antigravity shows one row per Gemini model, ordered worst first — the model
+closest to its cap leads, and the menu bar percentage is that worst model. A
+model at 0% has an untouched quota; Antigravity's own screen calls the same
+thing "100% remaining".
 
 ## Summary Calculation
 
@@ -66,7 +74,7 @@ no relaunch is needed.
 
 ```ini
 [ui]
-primary = codex             # codex, claude, or opencode
+primary = codex             # codex, claude, opencode, or antigravity
 
 [refresh]
 ttl_seconds = 120
@@ -78,7 +86,8 @@ db = ~/.local/share/opencode/opencode.db
 ```
 
 - `ui.primary`: vendor shown first and used by `Selected Provider` summary mode.
-  Accepts `codex`/`openai`, `claude`/`claude-code`/`anthropic`, `opencode`.
+  Accepts `codex`/`openai`, `claude`/`claude-code`/`anthropic`, `opencode`,
+  `antigravity`.
 - `refresh.ttl_seconds`: how long cached usage is reused before a refresh really
   fetches (default 120). A shorter refresh interval bounds it to half that
   interval.
@@ -106,6 +115,11 @@ Notes:
   the file, but they only reach the `token-my-bar` CLI: the menu bar app is
   launched by macOS and inherits no shell environment, so use the file for the
   app.
+- `TOKEN_MY_BAR_GEMINI_CREDS` points Antigravity at a credential file other than
+  `~/.gemini/oauth_creds.json`, and `TOKEN_MY_BAR_CODEX_HOME` points Codex's
+  local history scan at a directory other than `~/.codex`. Neither has a
+  `config.toml` key, so — being environment variables — they reach the CLI only;
+  the app always uses the default path.
 
 ## Privacy
 
@@ -120,6 +134,17 @@ TokenMyBar reads usage from local app sessions and provider APIs using existing 
 - If OpenCode shows no data, sign in to `opencode.ai` in Arc, Chrome, Brave, Edge,
   Chromium, Vivaldi, or Firefox first; browser import has nothing to read until a
   session cookie exists.
+- If Antigravity says `Sign in`, or shows **Antigravity sign-in expired — open
+  Antigravity once to renew**, just open Antigravity once and refresh. Its access
+  token is short-lived and TokenMyBar deliberately never renews it for you — it
+  only reads `~/.gemini/oauth_creds.json`, which Antigravity rewrites when you
+  use it. There is no local history behind this vendor, so an expired sign-in
+  leaves nothing to show but the last reading.
+- If Antigravity shows a model at `0%`, that is a full quota, not an error: the
+  vendor's own screen reports the same bucket as "100% remaining". A model at
+  `100%` is the exhausted one.
+- If Antigravity's numbers look right but the plan badge is missing, the separate
+  tier lookup failed. It is best-effort and never blocks a refresh; ignore it.
 - If a vendor is badged `Stale`, the official source was unreachable and the shown
   numbers are the last good reading (local history where a fallback exists).
   Refresh, or re-authenticate if it persists.
