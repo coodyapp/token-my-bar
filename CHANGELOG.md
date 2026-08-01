@@ -6,6 +6,32 @@ All notable changes to TokenMyBar are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-08-01
+
+### Added
+
+- An update notice. The app cannot update itself, so an install stayed frozen at
+  whatever version it was downloaded at — including versions since found to
+  report usage incorrectly. It now checks the public releases page at most once a
+  day and shows an "Update available" row you can click. The request is
+  unauthenticated and carries no identifier of any kind; nothing is downloaded or
+  installed.
+- OpenCode shows **billed API spend**, taken from the `cost` OpenCode itself
+  records rather than computed from a model price table that would go stale.
+  Deliberately labelled "billed": on this data 67% of tokens ran on subscription
+  models that bill nothing, so calling it "cost" would read as though two-thirds
+  of the usage were free.
+
+### Fixed
+
+- OpenCode's "Last 5h" and "Last 7d" figures counted a session's **entire
+  lifetime** whenever the session had been touched inside the window, so a
+  long-running session attributed months of tokens to the last five hours. A
+  backtest across 28 days of a real database found 39% of five-hour readings
+  overstated — 4.8x on average, 171x at worst, one by 1.2 million tokens. The
+  windows are now measured from per-message records, which carry their own
+  completion time and reconcile with the session totals exactly.
+
 ## [1.3.0] - 2026-08-01
 
 ### Changed
@@ -383,7 +409,8 @@ First stable release.
   cache files are `0600`. Keychain access is read-only behind the standard
   macOS consent prompt. All SQLite access uses parameterized queries.
 
-[Unreleased]: https://github.com/coodyapp/token-my-bar/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/coodyapp/token-my-bar/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/coodyapp/token-my-bar/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/coodyapp/token-my-bar/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/coodyapp/token-my-bar/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/coodyapp/token-my-bar/compare/v1.0.9...v1.1.0
