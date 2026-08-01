@@ -6,6 +6,54 @@ All notable changes to TokenMyBar are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-08-01
+
+### Fixed
+
+- The menu bar showed the 5-hour session window, which sits near zero precisely
+  between sessions. A real account read `76% | 0% | 0%` while one vendor's weekly
+  window was spent — the number that stops you working was the one number not
+  shown. The headline is now the worst window per vendor, labelled `wk` or `mo`
+  when it is not the session.
+- Reset countdowns were rendered once when the data was fetched and then stored,
+  so a cached row kept claiming "Resets in 26m" for weeks. They are computed from
+  the stored reset time whenever they are drawn, and a window whose reset has
+  passed shows "Window ended" instead of a percentage describing a period that is
+  over.
+- A vendor field this build does not recognise no longer reads as "0% used" — the
+  reading that tells you the tank is full when it may be empty. Renaming Claude's
+  `utilization` to `utilization_pct` used to produce a confident "Session 0% /
+  Weekly 0%"; it now reports which window it could not read. The ambiguous bare
+  `percent` key is no longer accepted at all, because the vendor dashboards use it
+  for percent *remaining* and guessing inverts the number.
+- Claude's per-model weekly caps are enumerated instead of listed by name. A Max
+  (5x) account showing a "Fable" cap alongside "All models" had that cap dropped
+  entirely by hardcoded Sonnet/Opus lookups.
+- The plan badge read "Pro" for an account whose limits are Max (5x). It now
+  prefers the rate-limit tier, which is what the percentages are a share of.
+- Readings that are not current are dimmed in the menu bar and carry their age
+  beside the vendor name, since the popover header reports only the freshest
+  vendor.
+- Provider overrides could never apply to the app: they were environment
+  variables, and macOS launches the app with no shell environment. `config.toml`
+  now takes `[opencode] cookie`, `workspace_id`, and `db`, which is the recovery
+  path when a vendor changes something.
+
+### Added
+
+- An app icon. Finder, Launchpad, Login Items, the About panel, and the DMG
+  install window previously all showed the generic blank-document icon.
+
+### Changed
+
+- The local-log fallback no longer re-reads every file on every refresh. Measured
+  on a real 200-file, 133 MB log directory: 5.4s for a full scan, 0.7s for a
+  repeat, with identical totals. The 20 MB per-file cap is gone — it silently
+  dropped whole session files, a measured 25% undercount for heavy users.
+- Documentation now matches the binary. `architecture.md` had claimed builds were
+  signed and notarized; they are ad-hoc signed. The stale in-repo wiki copy is
+  gone in favour of `docs/`.
+
 ## [1.0.9] - 2026-07-30
 
 ### Fixed
@@ -288,7 +336,8 @@ First stable release.
   cache files are `0600`. Keychain access is read-only behind the standard
   macOS consent prompt. All SQLite access uses parameterized queries.
 
-[Unreleased]: https://github.com/coodyapp/token-my-bar/compare/v1.0.9...HEAD
+[Unreleased]: https://github.com/coodyapp/token-my-bar/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/coodyapp/token-my-bar/compare/v1.0.9...v1.1.0
 [1.0.9]: https://github.com/coodyapp/token-my-bar/compare/v1.0.8...v1.0.9
 [1.0.8]: https://github.com/coodyapp/token-my-bar/compare/v1.0.7...v1.0.8
 [1.0.7]: https://github.com/coodyapp/token-my-bar/compare/v1.0.6...v1.0.7
