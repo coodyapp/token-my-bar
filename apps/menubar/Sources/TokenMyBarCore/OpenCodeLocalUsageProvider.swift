@@ -252,7 +252,7 @@ extension OpenCodeLocalUsage {
             UsageRow(
                 key: "spend",
                 title: "Billed API spend",
-                subtitle: "All time — subscription models bill nothing and are excluded",
+                subtitle: "All time, excludes subscription models",
                 value: Format.money(costUSD),
                 iconName: "dollarsign.circle",
                 percent: nil,

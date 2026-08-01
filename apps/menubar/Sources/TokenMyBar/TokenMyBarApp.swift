@@ -205,7 +205,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func aboutPanelOptions() -> [NSApplication.AboutPanelOptionKey: Any] {
         let version = Self.bundleVersion
         let credits = NSAttributedString(
-            string: "Live AI token usage for Codex, Claude Code, and OpenCode — right in your menu bar.",
+            string: """
+            Native macOS menu bar app that gives you real-time insight into token \
+            usage, reset windows, and plan limits across Claude Code, OpenAI Codex, \
+            OpenCode and Antigravity. Built with a privacy-first approach, it runs \
+            with zero telemetry.
+            """,
             attributes: [.font: NSFont.systemFont(ofSize: 11)]
         )
         return [

@@ -67,7 +67,7 @@ cat > "$CONTENTS/Info.plist" <<PLIST
   <key>CFBundleVersion</key><string>$BUILD_NUMBER</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSUIElement</key><true/>
-  <key>NSHumanReadableCopyright</key><string>Copyright © 2026 coodyapp. MIT Licensed.</string>
+  <key>NSHumanReadableCopyright</key><string>Copyright © 2026 coody. MIT Licensed.</string>
   <key>NSPrincipalClass</key><string>NSApplication</string>
 </dict>
 </plist>

@@ -115,6 +115,14 @@ enum PreviewSnapshot {
                     row("rolling", "Rolling Usage", 5 * 3600, 0),
                     row("weekly", "Weekly", 6 * 24 * 3600 + 2 * 3600, 80),
                     row("monthly", "Monthly", 22 * 24 * 3600, 100),
+                    UsageRow(
+                        key: "spend",
+                        title: "Billed API spend",
+                        subtitle: "All time, excludes subscription models",
+                        value: "$21.40",
+                        iconName: "dollarsign.circle",
+                        unit: .cost
+                    ),
                 ]
             ),
             ProviderSnapshot(
@@ -124,7 +132,6 @@ enum PreviewSnapshot {
                 usageRows: [
                     row("session", "Session", 3 * 3600 + 120, 27),
                     row("weekly", "Weekly", 6 * 24 * 3600 + 4 * 3600, 14),
-                    row("monthly", "Monthly", 22 * 24 * 3600 + 3600, 5),
                 ]
             ),
             ProviderSnapshot(
@@ -140,11 +147,19 @@ enum PreviewSnapshot {
             ProviderSnapshot(
                 providerID: .antigravity, status: .ok, usedTokens: nil,
                 unit: .requests, usagePercent: 34,
-                refreshedAt: now, primarySource: .oauth, confidence: .high, isEstimated: false,
-                planName: "Standard",
+                refreshedAt: now, primarySource: .localFile, confidence: .high, isEstimated: false,
+                planName: "Pro",
                 usageRows: [
-                    row("model-gemini-3.1-pro", "Gemini 3.1 Pro", 23 * 3600, 34),
-                    row("model-gemini-2.5-flash", "Gemini 2.5 Flash", 23 * 3600, 6),
+                    UsageRow(
+                        key: "gemini-group",
+                        title: "Gemini models",
+                        subtitle: "Gemini Flash and Pro share this limit",
+                        value: "34%",
+                        iconName: "sparkles",
+                        resetAt: Date().addingTimeInterval(3 * 3600),
+                        percent: 34,
+                        unit: .requests
+                    ),
                 ]
             ),
         ]

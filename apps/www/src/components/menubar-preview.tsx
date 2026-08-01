@@ -22,12 +22,15 @@ import { BorderTrail } from "@/components/core/border-trail"
 // 1pt = 1px: 380px popover, 14px padding, 150×6 bars, 38px percent column.
 
 type Row = {
-  // Antigravity reports one bucket per model instead of fixed windows, so its
-  // rows carry the app's `model-<id>` keys.
-  key: "session" | "weekly" | "monthly" | `model-${string}`
+  // Antigravity meters a whole model group rather than fixed windows, so its
+  // row carries the app's `gemini-group` key.
+  key: "session" | "weekly" | "monthly" | "spend" | "gemini-group"
   title: string
+  // A spend row has a figure but nothing to fill a bar with, so it shows neither
+  // a countdown nor a meter — exactly as PopoverView does.
   reset: string
-  percent: number
+  percent?: number
+  value?: string
 }
 
 type Vendor = { name: string; icon: LucideIcon; plan: string; rows: Row[] }
@@ -56,6 +59,12 @@ const VENDORS: Vendor[] = [
         reset: "Resets in 22d 20h",
         percent: 100,
       },
+      {
+        key: "spend",
+        title: "Billed API spend",
+        reset: "All time, excludes subscription models",
+        value: "$21.40",
+      },
     ],
   },
   {
@@ -75,18 +84,12 @@ const VENDORS: Vendor[] = [
         reset: "Resets in 6d 4h",
         percent: 14,
       },
-      {
-        key: "monthly",
-        title: "Monthly Usage",
-        reset: "Resets in 22d 21h",
-        percent: 5,
-      },
     ],
   },
   {
     name: "Claude Code",
     icon: Sparkles,
-    plan: "Pro",
+    plan: "Max 5x",
     rows: [
       {
         key: "session",
@@ -101,29 +104,23 @@ const VENDORS: Vendor[] = [
         percent: 65,
       },
       {
-        key: "monthly",
-        title: "Monthly Usage",
-        reset: "Resets in 18d 6h",
-        percent: 42,
+        key: "gemini-group",
+        title: "Fable only",
+        reset: "Resets in 2d 18h",
+        percent: 0,
       },
     ],
   },
   {
     name: "Antigravity",
     icon: CircleArrowOutUpRight,
-    plan: "Standard",
+    plan: "Pro",
     rows: [
       {
-        key: "model-gemini-3.1-pro",
-        title: "Gemini 3.1 Pro",
-        reset: "Resets in 23h 4m",
+        key: "gemini-group",
+        title: "Gemini models",
+        reset: "Gemini Flash and Pro share this limit",
         percent: 34,
-      },
-      {
-        key: "model-gemini-2.5-flash",
-        title: "Gemini 2.5 Flash",
-        reset: "Resets in 23h 4m",
-        percent: 6,
       },
     ],
   },
@@ -204,7 +201,10 @@ function UsageBar({
   delay: number
 }) {
   const Icon = metricIcon(row.key)
-  const target = filled ? row.percent : 0
+  const target = filled ? (row.percent ?? 0) : 0
+  // A row with a figure but no percentage — billed spend — gets the meter's
+  // width for its value instead of an empty bar, matching PopoverView.
+  const hasMeter = row.percent !== undefined
   return (
     <div className="flex items-center">
       <Icon
@@ -227,29 +227,31 @@ function UsageBar({
         </span>
       </div>
       <div className="min-w-3 flex-1" />
-      <div
-        role="progressbar"
-        aria-label={`${row.title} usage`}
-        aria-valuenow={row.percent}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        className="h-[6px] w-[150px] shrink-0 overflow-hidden rounded-full"
-        style={{ backgroundColor: "rgba(152,152,157,0.3)" }}
-      >
+      {hasMeter && (
         <div
-          className="h-full rounded-full transition-[width] duration-700 ease-out motion-reduce:transition-none"
-          style={{
-            width: target > 0 ? `max(6px, ${target}%)` : "0px",
-            backgroundColor: fillColor(row.percent),
-            transitionDelay: `${delay}ms`,
-          }}
-        />
-      </div>
+          role="progressbar"
+          aria-label={`${row.title} usage`}
+          aria-valuenow={row.percent}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          className="h-[6px] w-[150px] shrink-0 overflow-hidden rounded-full"
+          style={{ backgroundColor: "rgba(152,152,157,0.3)" }}
+        >
+          <div
+            className="h-full rounded-full transition-[width] duration-700 ease-out motion-reduce:transition-none"
+            style={{
+              width: target > 0 ? `max(6px, ${target}%)` : "0px",
+              backgroundColor: fillColor(row.percent ?? 0),
+              transitionDelay: `${delay}ms`,
+            }}
+          />
+        </div>
+      )}
       <span
-        className="w-[38px] pl-2.5 text-right text-[12px] tabular-nums"
+        className="min-w-[38px] pl-2.5 text-right text-[12px] tabular-nums"
         style={{ color: MAC.secondary }}
       >
-        <AnimatedPercent target={target} delay={delay} />
+        {hasMeter ? <AnimatedPercent target={target} delay={delay} /> : row.value}
       </span>
     </div>
   )
