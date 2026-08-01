@@ -6,6 +6,39 @@ All notable changes to TokenMyBar are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-08-01
+
+### Added
+
+- **Google Antigravity** as a fourth vendor. Quota comes from the same Code
+  Assist endpoint the Antigravity client itself calls, authenticated with the
+  credentials its sign-in already wrote to `~/.gemini/oauth_creds.json` — nothing
+  is written back. One row per model, worst first, with the tier as the plan
+  badge. Antigravity reports how much quota is *left*, the inverse of every other
+  vendor, so it is converted to percent used at the edge and verified by tests
+  against a recorded live payload.
+
+### Fixed
+
+- Every Claude reset time was missing. Anthropic sends microsecond-precision
+  timestamps (`…:00.084152+00:00`) and `ISO8601DateFormatter` parses at most
+  milliseconds, so each row silently fell back to "Starts when a message is
+  sent" while the vendor's own screen showed a countdown.
+- Claude's per-model caps did not appear. The usage payload reports them in a
+  `limits` array — the top-level `seven_day_*` keys are now null — so a Max plan's
+  "Fable" cap was dropped entirely. The array is read as the primary source, with
+  the older keys as a fallback.
+- Codex windows were mislabelled. A Plus account's `primary_window` is a 7-day
+  window (`limit_window_seconds: 604800`), which the app called "Session" — the
+  same class of mistake as showing the session while a week is spent. Windows are
+  now named by their real length.
+- Claude's plan badge read "Pro" for a Max 5x account. It comes from
+  `rateLimitTier` (`default_claude_max_5x` → "Max 5x") rather than
+  `subscriptionType`, which disagrees with it.
+- `token-my-bar --verbose` stopped printing reset countdowns in 1.1.0, when they
+  became render-time values; the CLI now asks for them the same way the popover
+  does.
+
 ## [1.1.0] - 2026-08-01
 
 ### Fixed
@@ -336,7 +369,8 @@ First stable release.
   cache files are `0600`. Keychain access is read-only behind the standard
   macOS consent prompt. All SQLite access uses parameterized queries.
 
-[Unreleased]: https://github.com/coodyapp/token-my-bar/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/coodyapp/token-my-bar/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/coodyapp/token-my-bar/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/coodyapp/token-my-bar/compare/v1.0.9...v1.1.0
 [1.0.9]: https://github.com/coodyapp/token-my-bar/compare/v1.0.8...v1.0.9
 [1.0.8]: https://github.com/coodyapp/token-my-bar/compare/v1.0.7...v1.0.8

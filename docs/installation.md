@@ -74,6 +74,13 @@ TokenMyBar reads usage from tools you already use — there is no separate sign-
   (`chmod 600` it) — the `TOKEN_MY_BAR_OPENCODE_COOKIE` environment variable works
   for the CLI but never reaches the app, which Launch Services starts with no
   shell environment.
+- **Google Antigravity** — reads `~/.gemini/oauth_creds.json`, written by the
+  Antigravity / Gemini sign-in. No Keychain prompt: it is a plain file read. The
+  stored token is short-lived and TokenMyBar never refreshes it, so if the vendor
+  reports an expired sign-in, open Antigravity once and refresh.
+
+Only Claude Code and the OpenCode browser import trigger Keychain prompts; Codex
+and Antigravity are file reads.
 
 If a vendor shows **Sign in**, authenticate once in that vendor's own app and
 refresh. See the [user guide](user-guide.md) for settings and troubleshooting,

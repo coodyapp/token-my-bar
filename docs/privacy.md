@@ -39,10 +39,31 @@ suppressed.
   `opencode.ai` cookie from a local browser (see below). A cookie written into
   that config file is a credential you supplied — keep the file `0600`; the app
   warns when it is readable by anyone else.
+- Antigravity: reads the access token and its expiry from
+  `~/.gemini/oauth_creds.json` (override `TOKEN_MY_BAR_GEMINI_CREDS`), the file
+  the Antigravity / Gemini sign-in writes. Read-only: TokenMyBar never refreshes
+  or rewrites the token, and reports when it has lapsed instead.
 - Local cost/history scans read known provider log paths only: `~/.claude/projects`,
   `~/.codex/sessions` (override `TOKEN_MY_BAR_CODEX_HOME`), and
   `~/.local/share/opencode/opencode.db` or `$XDG_DATA_HOME/opencode/opencode.db`
-  (override `TOKEN_MY_BAR_OPENCODE_DB`).
+  (override `TOKEN_MY_BAR_OPENCODE_DB`). Antigravity has no local source: its
+  quota endpoint is the only thing read for that vendor.
+
+## Network Calls
+
+Every request goes straight to the vendor, with that vendor's own stored
+credential, and only for enabled providers. The full list:
+
+| Vendor | Request |
+|---|---|
+| Codex | `GET https://chatgpt.com/backend-api/wham/usage` |
+| Claude | `GET https://api.anthropic.com/api/oauth/usage` |
+| OpenCode | `GET https://opencode.ai/_server?id=<fn>` then `GET https://opencode.ai/workspace/<wrk_…>/go` |
+| Antigravity | `POST https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota` (empty `{}` body) and, for the plan badge only, `POST https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist` |
+
+Nothing is sent to a TokenMyBar server; there is no TokenMyBar server. Request
+bodies carry no prompts, completions, or file contents — the Antigravity quota
+body is literally `{}`, and the badge call sends only `{"metadata":{"pluginType":"GEMINI"}}`.
 
 ## Browser Cookies
 

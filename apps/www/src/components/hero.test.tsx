@@ -15,6 +15,11 @@ describe("Hero", () => {
     ).toBeInTheDocument()
     expect(
       screen.getByText(
+        /Claude Code, OpenAI Codex, OpenCode, and Google Antigravity/
+      )
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
         (_, element) =>
           element?.tagName === "CODE" &&
           element.textContent ===

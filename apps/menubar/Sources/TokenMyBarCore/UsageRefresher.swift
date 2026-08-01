@@ -33,6 +33,15 @@ public actor UsageRefresher {
         Self.visible((try? await store.load()) ?? [], enabled: enabled)
     }
 
+    /// Drops memoized credentials so the next read asks the OS again.
+    ///
+    /// Only for a refresh the user asked for: background refreshes reuse the
+    /// memoized answer, which is what stops a consent prompt appearing every few
+    /// minutes. When someone clicks Refresh, re-asking is the point.
+    public func forgetCachedCredentials() {
+        Keychain.invalidate()
+    }
+
     @discardableResult
     public func refresh(
         enabled: [ProviderID]? = nil,

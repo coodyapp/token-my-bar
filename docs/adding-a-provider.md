@@ -17,6 +17,7 @@ public enum ProviderID: String, CaseIterable, Codable, Sendable {
     case codex
     case claudeCode = "claude-code"
     case opencode
+    case antigravity
     case myvendor   // raw value is the on-disk/JSON identifier
 
     public var displayName: String {
@@ -68,7 +69,9 @@ spelunking:
   reports percent used on a 0–100 scale, and small values pass through unscaled
   (Codex sends `used_percent: 1` for 1%). If your vendor reports percent
   *remaining*, invert it in your own provider — do not reuse a used-percent key
-  name for it.
+  name for it. `AntigravityUsageProvider.usedPercent` is the worked example: it
+  turns a 0...1 `remainingFraction` into percent used once, at the edge, so
+  nothing downstream has to know (see [antigravity.md](antigravity.md)).
 - `RemoteJSON.resetDate(in:)` — parses an absolute reset timestamp, preferring it
   over seconds-until-reset fields when both exist.
 - `RemoteJSON.row(key:title:iconName:object:)` — builds a `UsageRow` from one
@@ -147,7 +150,8 @@ Add your provider to `defaultProviders()` in
 `Sources/TokenMyBarCore/ProviderClient.swift`. If you also have a local-history
 fallback source, wrap the official provider and the fallback in a
 `FallbackProvider` (same file) — it returns the official snapshot when its status
-is `.ok` and otherwise merges in last-good local data:
+is `.ok` and otherwise merges in last-good local data. A vendor with no readable
+local history is registered bare instead, as `AntigravityUsageProvider` is:
 
 ```swift
 public static func defaultProviders() -> [any ProviderClient] {

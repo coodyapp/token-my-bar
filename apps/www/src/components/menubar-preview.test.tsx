@@ -10,8 +10,11 @@ describe("MenubarPreview", () => {
     expect(screen.getByLabelText("OpenCode")).toBeInTheDocument()
     expect(screen.getByLabelText("OpenAI Codex")).toBeInTheDocument()
     expect(screen.getByLabelText("Claude Code")).toBeInTheDocument()
+    expect(screen.getByLabelText("Antigravity")).toBeInTheDocument()
 
-    expect(screen.getAllByRole("progressbar")).toHaveLength(9)
+    // Three windows each for the first three vendors, one row per model for
+    // Antigravity.
+    expect(screen.getAllByRole("progressbar")).toHaveLength(11)
   })
 
   it("exposes a refresh control", () => {

@@ -29,8 +29,14 @@ stores on the Mac. There is one official path plus a local cost fallback.
     because `reset_after_seconds` is the static window length (always 5h/7d),
     not the time actually left.
 - Mapping:
-  - `primary_window` → "Session" row (drives the menu bar percent).
-  - `secondary_window` → "Weekly" row.
+  - `primary_window` drives the menu bar percent.
+  - Each window is **titled by its declared length**, not by the field it arrived
+    in: `limit_window_seconds` ≥ 20 days → "Monthly", ≥ 24h → "Weekly", otherwise
+    "Session". The field name lies on some plans — a Plus account's
+    `primary_window` is `limit_window_seconds: 604800`, i.e. the weekly limit its
+    own `/status` screen shows, so it now reads "Weekly", not "Session".
+  - Only when the vendor omits `limit_window_seconds` does the field name decide
+    (`primary_window` → "Session", `secondary_window` → "Weekly").
   - `plan_type` → plan label.
 - The endpoint reports percent **used**, already on the 0–100 scale every vendor
   uses here, so `CodexOAuthUsageProvider` passes it straight through

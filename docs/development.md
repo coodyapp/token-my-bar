@@ -50,8 +50,10 @@ To add a vendor, follow [adding-a-provider.md](adding-a-provider.md).
   credentials and encode the real shape in tests
   (`OfficialUsageProviderTests`). Two production bugs came from assumed
   semantics (Codex `used_percent` was inverted as if it were "remaining").
-- All vendors report percent **used** on a 0–100 scale. `RemoteJSON.percent`
-  never fraction-scales.
+- Everything `RemoteJSON.percent` reads is percent **used** on a 0–100 scale, and
+  it never fraction-scales. A vendor that reports otherwise converts in its own
+  provider before anything downstream sees it: Antigravity sends
+  `remainingFraction` (0...1 **left**) and inverts at the edge.
 - Prefer absolute reset timestamps (`reset_at`) over countdown/window-length
   fields when both exist.
 - macOS rejects `SecItemCopyMatching` with `kSecMatchLimitAll` +

@@ -95,17 +95,26 @@ enum PreviewSnapshot {
 
     private static var mockSnapshots: [ProviderSnapshot] {
         let now = Date().addingTimeInterval(-120)
-        func row(_ key: String, _ title: String, _ reset: String, _ pct: Double) -> UsageRow {
-            UsageRow(key: key, title: title, value: "\(Int(pct))%", detail: reset, percent: pct)
+        // Reset dates rather than pre-rendered strings, so the preview exercises
+        // the same render-time countdown the real popover uses.
+        func row(_ key: String, _ title: String, _ resetIn: TimeInterval, _ pct: Double) -> UsageRow {
+            UsageRow(
+                key: key,
+                title: title,
+                value: "\(Int(pct))%",
+                resetAt: Date().addingTimeInterval(resetIn),
+                percent: pct
+            )
         }
         return [
             ProviderSnapshot(
                 providerID: .opencode, status: .ok, usedTokens: 0,
                 refreshedAt: now, primarySource: .localFile, confidence: .medium, isEstimated: false,
+                planName: "Go",
                 usageRows: [
-                    row("session", "Rolling Usage", "Resets in 5h 0m", 0),
-                    row("weekly", "Weekly", "Resets in 6d 2h", 80),
-                    row("monthly", "Monthly", "Resets in 22d 20h", 100),
+                    row("rolling", "Rolling Usage", 5 * 3600, 0),
+                    row("weekly", "Weekly", 6 * 24 * 3600 + 2 * 3600, 80),
+                    row("monthly", "Monthly", 22 * 24 * 3600, 100),
                 ]
             ),
             ProviderSnapshot(
@@ -113,18 +122,29 @@ enum PreviewSnapshot {
                 refreshedAt: now, primarySource: .oauth, confidence: .high, isEstimated: false,
                 planName: "Plus",
                 usageRows: [
-                    row("session", "Session", "Resets in 3h 2m", 27),
-                    row("weekly", "Weekly", "Resets in 6d 4h", 14),
-                    row("monthly", "Monthly", "Resets in 22d 21h", 5),
+                    row("session", "Session", 3 * 3600 + 120, 27),
+                    row("weekly", "Weekly", 6 * 24 * 3600 + 4 * 3600, 14),
+                    row("monthly", "Monthly", 22 * 24 * 3600 + 3600, 5),
                 ]
             ),
             ProviderSnapshot(
                 providerID: .claudeCode, status: .ok, usedTokens: 0,
                 refreshedAt: now, primarySource: .oauth, confidence: .high, isEstimated: false,
+                planName: "Max 5x",
                 usageRows: [
-                    row("session", "Session", "Resets in 1h 12m", 82),
-                    row("weekly", "Weekly", "Resets in 2d 18h", 65),
-                    row("monthly", "Monthly", "Resets in 18d 6h", 42),
+                    row("session", "Session", 3600 + 720, 82),
+                    row("weekly", "Weekly", 2 * 24 * 3600 + 18 * 3600, 65),
+                    row("weekly-fable", "Fable only", 2 * 24 * 3600 + 18 * 3600, 0),
+                ]
+            ),
+            ProviderSnapshot(
+                providerID: .antigravity, status: .ok, usedTokens: nil,
+                unit: .requests, usagePercent: 34,
+                refreshedAt: now, primarySource: .oauth, confidence: .high, isEstimated: false,
+                planName: "Standard",
+                usageRows: [
+                    row("model-gemini-3.1-pro", "Gemini 3.1 Pro", 23 * 3600, 34),
+                    row("model-gemini-2.5-flash", "Gemini 2.5 Flash", 23 * 3600, 6),
                 ]
             ),
         ]

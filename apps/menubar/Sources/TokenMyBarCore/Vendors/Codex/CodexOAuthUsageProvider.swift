@@ -35,8 +35,12 @@ public struct CodexOAuthUsageProvider: ProviderClient {
         // own inversion of used_percent: 1).
         let percent = RemoteJSON.percent(in: primary ?? object)
         var rows = [UsageRow]()
-        if let primary { rows.append(RemoteJSON.row(key: "session", title: "Session", iconName: "timer", object: primary)) }
-        if let weekly { rows.append(RemoteJSON.row(key: "weekly", title: "Weekly", iconName: "calendar", object: weekly)) }
+        // The window a plan calls "primary" is not always the 5-hour one — a Plus
+        // account's primary_window is `limit_window_seconds: 604800`, i.e. the
+        // weekly limit its own /status screen reports. Label from the declared
+        // length rather than from the field name.
+        if let primary { rows.append(Self.windowRow(primary, fallbackKey: "session")) }
+        if let weekly { rows.append(Self.windowRow(weekly, fallbackKey: "weekly")) }
         let unreadable = RemoteJSON.unreadableWindow(in: rows)
 
         return ProviderSnapshot(
@@ -58,6 +62,27 @@ public struct CodexOAuthUsageProvider: ProviderClient {
             planName: RemoteJSON.planName(in: object, keys: ["plan_type", "planType", "plan"]),
             usageRows: rows
         )
+    }
+
+    /// Names a window by how long it actually lasts, falling back to the field it
+    /// arrived in when the vendor omits the length.
+    static func windowRow(_ window: [String: Any], fallbackKey: String) -> UsageRow {
+        let key: String
+        let title: String
+        let icon: String
+        if let seconds = RemoteJSON.double(window, keys: ["limit_window_seconds", "limitWindowSeconds"]) {
+            if seconds >= 20 * 24 * 3600 {
+                (key, title, icon) = ("monthly", "Monthly", "calendar.badge.clock")
+            } else if seconds >= 24 * 3600 {
+                (key, title, icon) = ("weekly", "Weekly", "calendar")
+            } else {
+                (key, title, icon) = ("session", "Session", "timer")
+            }
+        } else {
+            let isSession = fallbackKey == "session"
+            (key, title, icon) = (fallbackKey, isSession ? "Session" : "Weekly", isSession ? "timer" : "calendar")
+        }
+        return RemoteJSON.row(key: key, title: title, iconName: icon, object: window)
     }
 
     private static func credentials() throws -> OAuthCredentials {

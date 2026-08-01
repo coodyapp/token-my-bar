@@ -1,12 +1,15 @@
 # TokenMyBar
 
-TokenMyBar is a native macOS menu bar app that gives you real-time insight into token usage, reset windows, and plan limits across Claude Code, OpenAI Codex, and OpenCode. Built with a privacy-first approach, it runs with zero telemetry.
+TokenMyBar is a native macOS menu bar app that gives you real-time insight into token usage, reset windows, and plan limits across Claude Code, OpenAI Codex, OpenCode, and Google Antigravity. Built with a privacy-first approach, it runs with zero telemetry.
+
+<img src="docs/images/popover.png" alt="TokenMyBar popover showing usage for OpenCode, OpenAI Codex, Claude Code, and Google Antigravity" width="380">
 
 ## What You See
 
 - Native macOS popover with one material background, system icons, and system colors.
-- Menu bar usage like `OpenCode icon 8% Codex icon 27% Claude icon 14%`.
-- Vendor sections for OpenCode, Codex, and Claude with reset windows and usage meters.
+- Menu bar usage like `OpenCode icon 8% Codex icon 27% Claude icon 14% Antigravity icon 34%`.
+- Vendor sections for OpenCode, Codex, Claude, and Antigravity with reset windows and usage meters.
+- Antigravity adds a row per Gemini model, worst-first ([docs/antigravity.md](docs/antigravity.md)).
 - Settings for display mode, enabled vendors, summary calculation, and menu bar behavior.
 
 ## Install
@@ -59,7 +62,7 @@ Architecture, provider rules, and the release process live in [docs/development.
 
 ## Privacy
 
-TokenMyBar reads the vendor sessions already on your Mac: `~/.codex/auth.json`, the `Claude Code-credentials` Keychain item, and — for OpenCode — the `opencode.ai` cookie from a local browser cookie store. Nothing is written back, and the snapshot cache stores no OAuth tokens, cookies, authorization headers, API keys, or passwords. Details: [docs/privacy.md](docs/privacy.md).
+TokenMyBar reads the vendor sessions already on your Mac: `~/.codex/auth.json`, the `Claude Code-credentials` Keychain item, `~/.gemini/oauth_creds.json` for Antigravity, and — for OpenCode — the `opencode.ai` cookie from a local browser cookie store. Nothing is written back, and the snapshot cache stores no OAuth tokens, cookies, authorization headers, API keys, or passwords. Details: [docs/privacy.md](docs/privacy.md).
 
 ## License
 

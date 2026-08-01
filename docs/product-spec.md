@@ -8,11 +8,12 @@ TokenMyBar does one thing perfectly: it turns your live AI token usage into a si
 
 ## Scope
 
-TokenMyBar is a macOS-only native menu bar app for three coding-agent vendors:
+TokenMyBar is a macOS-only native menu bar app for four coding-agent vendors:
 
 - OpenAI Codex
 - Claude Code
 - OpenCode
+- Google Antigravity
 
 It is not a general AI billing dashboard. Official quota windows come from provider-owned auth sources. Local logs and SQLite history are fallback/cost-history sources only.
 
@@ -25,14 +26,14 @@ It is not a general AI billing dashboard. Official quota windows come from provi
 | `apps/menubar/Sources/TokenMyBarCore` | Provider models, refresh/cache, parsers |
 | `apps/menubar/Sources/TokenMyBarCLI` | Swift CLI binary `token-my-bar` |
 | `apps/www` | React/Vite/Tailwind landing page |
-| `docs/` | Product, architecture, and per-vendor specs (`codex.md`, `claude-code.md`, `opencode.md`) |
+| `docs/` | Product, architecture, and per-vendor specs (`codex.md`, `claude-code.md`, `opencode.md`, `antigravity.md`) |
 
 No separate `apps/cli` package exists.
 
 ## Current CLI
 
 - `token-my-bar status [--refresh]`
-- `token-my-bar status --json [--vendor codex|claude-code|opencode]`
+- `token-my-bar status --json [--vendor codex|claude-code|opencode|antigravity]`
 - `token-my-bar doctor`
 
 JSON output uses one Waybar-compatible shape for every vendor: `vendor`, `name`, `plan`, `status`, `text`, `tooltip`, `percentage`, `class`, `updated_at`, and `windows`.
@@ -85,6 +86,18 @@ ttl_seconds = 120
 - Usage: `GET https://opencode.ai/workspace/<wrk_…>/go` (parsed from page JS).
 - Workspace override: `TOKEN_MY_BAR_OPENCODE_WORKSPACE_ID`.
 - Fallback: local SQLite history from `$XDG_DATA_HOME/opencode/opencode.db` or `~/.local/share/opencode/opencode.db`.
+
+### Google Antigravity
+
+- Primary: OAuth credentials from `~/.gemini/oauth_creds.json` (override
+  `TOKEN_MY_BAR_GEMINI_CREDS`), written by the Antigravity / Gemini sign-in.
+- Official endpoint: `POST https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota`.
+- Plan badge: best-effort `POST …/v1internal:loadCodeAssist`; a failure there
+  never fails the refresh.
+- Quota arrives as `remainingFraction` (0...1 **left**) per model bucket and is
+  inverted to percent used at the provider edge. One row per model, worst first.
+- No fallback: the endpoint is the only source, and the access token is never
+  refreshed — an expired sign-in is reported, not renewed.
 
 ## UX Rules
 
