@@ -28,22 +28,31 @@ public struct LocalJSONLUsageProvider: ProviderClient {
     private let roots: [URL]
     private let authSummary: String
     private let maxFiles: Int
-    private let maxFileBytes: UInt64
+    private let cacheURL: URL?
     private let chunkSize = 64 * 1024
     private let maxLineBytes = 2 * 1024 * 1024
 
+    /// `cacheURL` enables the per-file incremental cache; `nil` always does a
+    /// full scan, which is what callers pointed at throwaway directories want.
     public init(
         providerID: ProviderID,
         roots: [URL],
         authSummary: String,
         maxFiles: Int = 200,
-        maxFileBytes: UInt64 = 20 * 1024 * 1024
+        cacheURL: URL? = nil
     ) {
         self.providerID = providerID
         self.roots = roots
         self.authSummary = authSummary
         self.maxFiles = maxFiles
-        self.maxFileBytes = maxFileBytes
+        self.cacheURL = cacheURL
+    }
+
+    /// Lives beside the snapshot cache, one file per vendor.
+    static func defaultCacheURL(for providerID: ProviderID) -> URL {
+        SnapshotStore.defaultURL()
+            .deletingLastPathComponent()
+            .appendingPathComponent("local-scan-\(providerID.rawValue).json")
     }
 
     public static func claude() -> LocalJSONLUsageProvider {
@@ -51,7 +60,8 @@ public struct LocalJSONLUsageProvider: ProviderClient {
             providerID: .claudeCode,
             roots: [FileManager.default.homeDirectoryForCurrentUser
                 .appendingPathComponent(".claude/projects", isDirectory: true)],
-            authSummary: "Local Claude logs / no network auth"
+            authSummary: "Local Claude logs / no network auth",
+            cacheURL: defaultCacheURL(for: .claudeCode)
         )
     }
 
@@ -66,7 +76,8 @@ public struct LocalJSONLUsageProvider: ProviderClient {
         return LocalJSONLUsageProvider(
             providerID: .codex,
             roots: [base.appendingPathComponent("sessions", isDirectory: true), base],
-            authSummary: "Local Codex logs / no network auth"
+            authSummary: "Local Codex logs / no network auth",
+            cacheURL: defaultCacheURL(for: .codex)
         )
     }
 
@@ -106,22 +117,50 @@ public struct LocalJSONLUsageProvider: ProviderClient {
         }
     }
 
+    /// Scans every discovered log, replaying files from the on-disk per-file
+    /// cache whenever that provably cannot change the answer, and rewrites the
+    /// cache for the next refresh.
     public func scanUsage(now: Date = Date()) throws -> LocalJSONLUsage {
         let files = discoverJSONLFiles(now: now)
         guard !files.isEmpty else { throw CocoaError(.fileNoSuchFile) }
 
+        let cache = loadCache()
+        var nextCache: [String: FileScanCacheEntry] = [:]
         var totals = MutableUsageTotals()
         var seenIDs = Set<String>()
         var lastUpdatedAt: Date?
 
         for file in files {
-            if let modified = try? file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate {
-                lastUpdatedAt = maxDate(lastUpdatedAt, modified)
+            lastUpdatedAt = maxDate(lastUpdatedAt, file.modified)
+            let key = file.url.standardizedFileURL.path
+
+            // Cached totals count every message in their file, so replaying an
+            // entry that shares ids with an already-counted file would count
+            // those twice; such a file is parsed instead.
+            if let entry = cache[key], entry.replays(file), seenIDs.isDisjoint(with: entry.ids) {
+                totals.add(entry.totals)
+                seenIDs.formUnion(entry.ids)
+                nextCache[key] = entry
+                continue
             }
+
             // One unreadable or since-deleted log must not sink the whole scan
             // and report "Local logs not found" over hundreds of valid files.
-            try? scanFile(file, totals: &totals, seenIDs: &seenIDs, now: now)
+            guard let scan = autoreleasepool(invoking: { try? scanFile(file.url, seenIDs: seenIDs) })
+            else { continue }
+            totals.add(scan.novel)
+            seenIDs.formUnion(scan.ids)
+            // A log that collides on ids is re-parsed on every scan; keeping its
+            // entry while the bytes are unchanged leaves the cache file itself
+            // untouched, so no write follows.
+            if let existing = cache[key], existing.replays(file) {
+                nextCache[key] = existing
+            } else {
+                nextCache[key] = FileScanCacheEntry(file, scan: scan, now: now)
+            }
         }
+
+        if nextCache != cache { saveCache(nextCache) }
 
         return LocalJSONLUsage(
             inputTokens: totals.input,
@@ -130,8 +169,8 @@ public struct LocalJSONLUsageProvider: ProviderClient {
             cacheReadTokens: totals.cacheRead,
             cacheWriteTokens: totals.cacheWrite,
             totalFallbackTokens: totals.totalFallback,
-            sessionTokens: totals.session,
-            weeklyTokens: totals.weekly,
+            sessionTokens: totals.tokens(since: Self.sessionCutoff(from: now)),
+            weeklyTokens: totals.tokens(since: Self.weeklyCutoff(from: now)),
             sonnetTokens: totals.sonnet,
             sampleCount: totals.samples,
             fileCount: files.count,
@@ -143,15 +182,19 @@ public struct LocalJSONLUsageProvider: ProviderClient {
     /// modified within the 7-day weekly window (so the weekly total is never
     /// silently truncated by `maxFiles`) and capping only files older than
     /// that window, which can no longer affect session or weekly totals.
-    private func discoverJSONLFiles(now: Date = Date()) -> [URL] {
-        var files: [(url: URL, modified: Date)] = []
+    ///
+    /// Size is deliberately not a filter: skipping a large file drops a whole
+    /// session's usage. The chunked reader and the per-line bound keep even a
+    /// pathological file cheap to walk.
+    private func discoverJSONLFiles(now: Date = Date()) -> [DiscoveredFile] {
+        var files: [DiscoveredFile] = []
         let keys: Set<URLResourceKey> = [.isRegularFileKey, .contentModificationDateKey, .fileSizeKey]
 
         for root in roots where FileManager.default.fileExists(atPath: root.path) {
             if root.pathExtension == "jsonl" {
                 guard let values = try? root.resourceValues(forKeys: keys) else { continue }
-                if values.isRegularFile == true, UInt64(values.fileSize ?? 0) <= maxFileBytes {
-                    files.append((root, values.contentModificationDate ?? .distantPast))
+                if values.isRegularFile == true {
+                    files.append(DiscoveredFile(url: root, values: values))
                 }
                 continue
             }
@@ -164,10 +207,9 @@ public struct LocalJSONLUsageProvider: ProviderClient {
 
             for case let file as URL in enumerator where file.pathExtension == "jsonl" {
                 guard let values = try? file.resourceValues(forKeys: keys),
-                      values.isRegularFile == true,
-                      UInt64(values.fileSize ?? 0) <= maxFileBytes
+                      values.isRegularFile == true
                 else { continue }
-                files.append((file, values.contentModificationDate ?? .distantPast))
+                files.append(DiscoveredFile(url: file, values: values))
             }
         }
 
@@ -177,28 +219,42 @@ public struct LocalJSONLUsageProvider: ProviderClient {
             return seen.insert(path).inserted
         }
 
-        let weeklyCutoff = now.addingTimeInterval(-7 * 24 * 60 * 60)
-        let recent = deduped.filter { $0.modified >= weeklyCutoff }.sorted { $0.modified > $1.modified }
-        let older = deduped.filter { $0.modified < weeklyCutoff }.sorted { $0.modified > $1.modified }
+        let cutoff = Self.weeklyCutoff(from: now)
+        let recent = deduped.filter { $0.modified >= cutoff }.sorted { $0.modified > $1.modified }
+        let older = deduped.filter { $0.modified < cutoff }.sorted { $0.modified > $1.modified }
         let olderBudget = max(0, maxFiles - recent.count)
 
-        return (recent + older.prefix(olderBudget)).map(\.url)
+        return recent + older.prefix(olderBudget)
     }
 
-    private func scanFile(_ file: URL, totals: inout MutableUsageTotals, seenIDs: inout Set<String>, now: Date) throws {
+    static func weeklyCutoff(from now: Date) -> Date {
+        now.addingTimeInterval(-7 * 24 * 60 * 60)
+    }
+
+    static func sessionCutoff(from now: Date) -> Date {
+        now.addingTimeInterval(-5 * 60 * 60)
+    }
+
+    private func scanFile(_ file: URL, seenIDs: Set<String>) throws -> FileScan {
         let handle = try FileHandle(forReadingFrom: file)
         defer { try? handle.close() }
 
+        var scan = FileScan()
         var buffer = Data()
         while true {
             let chunk = try handle.read(upToCount: chunkSize) ?? Data()
             if chunk.isEmpty { break }
             buffer.append(chunk)
 
-            while let newlineRange = buffer.firstRange(of: Data([0x0A])) {
-                let line = buffer.subdata(in: buffer.startIndex..<newlineRange.lowerBound)
-                buffer.removeSubrange(buffer.startIndex..<newlineRange.upperBound)
-                processLine(line, totals: &totals, seenIDs: &seenIDs, now: now)
+            // Every parsed line strands autoreleased Foundation objects that a
+            // menu bar app only drains at the end of the run loop turn, which is
+            // one whole scan later: 347 MB peak over a real 130 MB log directory.
+            autoreleasepool {
+                while let newlineRange = buffer.firstRange(of: Data([0x0A])) {
+                    let line = buffer.subdata(in: buffer.startIndex..<newlineRange.lowerBound)
+                    buffer.removeSubrange(buffer.startIndex..<newlineRange.upperBound)
+                    processLine(line, scan: &scan, seenIDs: seenIDs)
+                }
             }
 
             if buffer.count > maxLineBytes {
@@ -207,27 +263,71 @@ public struct LocalJSONLUsageProvider: ProviderClient {
         }
 
         if !buffer.isEmpty {
-            processLine(buffer, totals: &totals, seenIDs: &seenIDs, now: now)
+            autoreleasepool { processLine(buffer, scan: &scan, seenIDs: seenIDs) }
         }
+        return scan
     }
 
-    private func processLine(_ line: Data, totals: inout MutableUsageTotals, seenIDs: inout Set<String>, now: Date) {
+    private func processLine(_ line: Data, scan: inout FileScan, seenIDs: Set<String>) {
         guard !line.isEmpty,
               line.count <= maxLineBytes,
               let object = try? JSONSerialization.jsonObject(with: line) as? [String: Any]
         else { return }
         let id = Self.messageID(in: object)
-        if let id, seenIDs.contains(id) { return }
+        if let id, scan.ids.contains(id) { return }
         guard let usage = Self.firstUsageObject(in: object) else { return }
         let parsed = Self.parseUsage(usage)
         guard !parsed.isZero else { return }
-        if let id { seenIDs.insert(id) }
-        totals.add(
-            parsed,
-            timestamp: Self.timestamp(in: object),
-            model: Self.model(in: object),
-            now: now
+        let timestamp = Self.timestamp(in: object)
+        let model = Self.model(in: object)
+        scan.isolated.add(parsed, timestamp: timestamp, model: model)
+        // A resumed or forked session replays another file's messages verbatim:
+        // the cached per-file totals above have to count them, this scan's
+        // running totals below must not.
+        if let id {
+            scan.ids.insert(id)
+            if seenIDs.contains(id) { return }
+        }
+        scan.novel.add(parsed, timestamp: timestamp, model: model)
+    }
+
+    /// A cache that is missing, unreadable or stale-format is a cache miss, never
+    /// a failed scan.
+    private func loadCache() -> [String: FileScanCacheEntry] {
+        guard let cacheURL,
+              let data = try? Data(contentsOf: cacheURL),
+              let entries = try? JSONDecoder().decode([String: FileScanCacheEntry].self, from: data)
+        else { return [:] }
+        return entries
+    }
+
+    /// Entries are written only for the files of the current scan, so logs the
+    /// user deleted or that aged out of `maxFiles` drop off instead of piling up.
+    private func saveCache(_ entries: [String: FileScanCacheEntry]) {
+        guard let cacheURL, let data = try? JSONEncoder().encode(entries) else { return }
+        let directory = cacheURL.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(
+            at: directory,
+            withIntermediateDirectories: true,
+            attributes: [.posixPermissions: 0o700]
         )
+
+        // Same temp-write + rename as the snapshot cache: a torn file would be
+        // read back as corrupt on the next refresh.
+        let tempURL = directory.appendingPathComponent(".\(cacheURL.lastPathComponent).tmp")
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+        guard FileManager.default.createFile(
+            atPath: tempURL.path,
+            contents: data,
+            attributes: [.posixPermissions: 0o600]
+        ) else { return }
+
+        if FileManager.default.fileExists(atPath: cacheURL.path) {
+            guard (try? FileManager.default.replaceItemAt(cacheURL, withItemAt: tempURL)) != nil else { return }
+        } else {
+            guard (try? FileManager.default.moveItem(at: tempURL, to: cacheURL)) != nil else { return }
+        }
+        try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: cacheURL.path)
     }
 
     private static func firstUsageObject(in value: Any) -> [String: Any]? {
@@ -311,19 +411,91 @@ public struct LocalJSONLUsageProvider: ProviderClient {
     }
 }
 
-private struct MutableUsageTotals {
+private struct DiscoveredFile {
+    let url: URL
+    let modified: Date
+    let size: UInt64
+
+    init(url: URL, values: URLResourceValues) {
+        self.url = url
+        self.modified = values.contentModificationDate ?? .distantPast
+        self.size = UInt64(values.fileSize ?? 0)
+    }
+}
+
+/// One file's contribution, split because the two answers differ whenever the
+/// file shares message ids with a file already scanned.
+private struct FileScan {
+    /// This file on its own, which is what may be cached and replayed later.
+    var isolated = MutableUsageTotals()
+    /// Only the ids this scan had not already counted in an earlier file.
+    var novel = MutableUsageTotals()
+    var ids = Set<String>()
+}
+
+/// A file's parse result, persisted so an unchanged log is not re-read on every
+/// refresh — this scan runs as often as once a minute, for weeks.
+private struct FileScanCacheEntry: Codable, Equatable {
+    let size: UInt64
+    /// Epoch seconds rather than `Date`: compared for exact equality, so it must
+    /// round-trip through JSON bit for bit.
+    let modified: Double
+    let totals: MutableUsageTotals
+    /// Sorted, so an entry re-encodes identically and an unchanged cache is
+    /// recognised as unchanged.
+    let ids: [String]
+
+    init(_ file: DiscoveredFile, scan: FileScan, now: Date) {
+        self.size = file.size
+        self.modified = file.modified.timeIntervalSince1970
+        // A later scan can only ask about windows starting at or after this one,
+        // and a log's entries are no newer than its mtime, so samples older than
+        // a week before both are dead weight.
+        let horizon = LocalJSONLUsageProvider.weeklyCutoff(from: min(file.modified, now))
+        self.totals = scan.isolated.pruningWindowSamples(before: horizon)
+        self.ids = scan.ids.sorted()
+    }
+
+    /// True when the file is byte-for-byte the one this entry was parsed from,
+    /// which is all replaying takes: the entry holds no window that could have
+    /// gone stale, only totals and the timestamps the windows are derived from.
+    func replays(_ file: DiscoveredFile) -> Bool {
+        size == file.size && modified == file.modified.timeIntervalSince1970
+    }
+}
+
+/// One counted entry's tokens with the time they were spent. Kept per entry
+/// rather than pre-summed into the 5h/7d windows so a cached file can be
+/// replayed against any later `now` and still land in the right windows.
+private struct WindowSample: Codable, Equatable {
+    let at: Double
+    let tokens: Int
+}
+
+private struct MutableUsageTotals: Codable, Equatable {
     var input = 0
     var output = 0
     var reasoning = 0
     var cacheRead = 0
     var cacheWrite = 0
     var totalFallback = 0
-    var session = 0
-    var weekly = 0
     var sonnet = 0
     var samples = 0
+    var windowSamples: [WindowSample] = []
 
-    mutating func add(_ usage: ParsedUsage, timestamp: Date?, model: String?, now: Date) {
+    mutating func add(_ other: MutableUsageTotals) {
+        input.clampedAdd(other.input)
+        output.clampedAdd(other.output)
+        reasoning.clampedAdd(other.reasoning)
+        cacheRead.clampedAdd(other.cacheRead)
+        cacheWrite.clampedAdd(other.cacheWrite)
+        totalFallback.clampedAdd(other.totalFallback)
+        sonnet.clampedAdd(other.sonnet)
+        samples.clampedAdd(other.samples)
+        windowSamples.append(contentsOf: other.windowSamples)
+    }
+
+    mutating func add(_ usage: ParsedUsage, timestamp: Date?, model: String?) {
         let total = usage.primary
         input.clampedAdd(usage.input)
         output.clampedAdd(usage.output)
@@ -332,13 +504,30 @@ private struct MutableUsageTotals {
         cacheWrite.clampedAdd(usage.cacheWrite)
         totalFallback.clampedAdd(usage.totalFallback)
         if let timestamp {
-            if timestamp >= now.addingTimeInterval(-5 * 60 * 60) { session.clampedAdd(total) }
-            if timestamp >= now.addingTimeInterval(-7 * 24 * 60 * 60) { weekly.clampedAdd(total) }
+            windowSamples.append(WindowSample(at: timestamp.timeIntervalSince1970, tokens: total))
         }
         if model?.localizedCaseInsensitiveContains("sonnet") == true {
             sonnet.clampedAdd(total)
         }
         samples += 1
+    }
+
+    func tokens(since cutoff: Date) -> Int {
+        let epoch = cutoff.timeIntervalSince1970
+        var total = 0
+        for sample in windowSamples where sample.at >= epoch {
+            total.clampedAdd(sample.tokens)
+        }
+        return total
+    }
+
+    /// Drops samples no scan from `cutoff` on could still count, so a cached
+    /// file carries only what its windows may still need.
+    func pruningWindowSamples(before cutoff: Date) -> MutableUsageTotals {
+        let epoch = cutoff.timeIntervalSince1970
+        var pruned = self
+        pruned.windowSamples = windowSamples.filter { $0.at >= epoch }
+        return pruned
     }
 }
 

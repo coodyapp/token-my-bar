@@ -13,6 +13,10 @@ apps/menubar/.swiftpm/
 # Packaging output (.app, .dmg)
 apps/menubar/dist/
 
+# Intermediate iconset; regenerate with Scripts/generate-app-icon.swift.
+# AppIcon.icns itself is tracked — package.sh requires it.
+apps/menubar/Scripts/AppIcon.iconset/
+
 # Xcode
 DerivedData/
 *.xcuserdata/

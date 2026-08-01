@@ -213,6 +213,13 @@ private struct VendorSection: View {
 private struct VendorHeader: View {
     let snapshot: ProviderSnapshot
 
+    /// Only for readings that are not current — a live vendor's age is noise.
+    private var ageText: String? {
+        guard snapshot.status != .ok, snapshot.status != .loading else { return nil }
+        guard !snapshot.usageRows.isEmpty || snapshot.usagePercent != nil else { return nil }
+        return Format.compactAge(since: snapshot.refreshedAt)
+    }
+
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
             Image(systemName: snapshot.providerID.iconName)
@@ -229,6 +236,15 @@ private struct VendorHeader: View {
 
             if let plan = snapshot.planName, !plan.isEmpty {
                 PlanBadge(text: plan)
+            }
+
+            // The header's "Updated" line reports the newest vendor, so a vendor
+            // whose own reading is old needs to say so next to its numbers.
+            if let age = ageText {
+                Text(age)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
             }
 
             Spacer(minLength: 8)
@@ -299,16 +315,27 @@ private struct UsageRowView: View {
     let row: UsageRow
     let isStale: Bool
 
+    /// A window whose reset has already passed describes a period that is over.
+    /// Its number is not the current load, so it is withheld rather than shown
+    /// next to windows that are live.
+    private var hasElapsed: Bool {
+        guard let resetAt = row.resetAt else { return false }
+        return resetAt <= Date()
+    }
+
     private var clampedPercent: Double? {
-        row.percent.map { min(max($0, 0), 100) }
+        guard !hasElapsed else { return nil }
+        return row.percent.map { min(max($0, 0), 100) }
     }
 
     private var resetText: String {
-        row.detail ?? row.subtitle ?? " "
+        if hasElapsed { return "Window ended" }
+        return row.resetText() ?? row.detail ?? row.subtitle ?? " "
     }
 
     private var percentText: String {
-        row.percent.map { "\(Int($0.rounded()))%" } ?? row.value
+        guard !hasElapsed else { return "—" }
+        return row.percent.map { "\(Int($0.rounded()))%" } ?? row.value
     }
 
     var body: some View {

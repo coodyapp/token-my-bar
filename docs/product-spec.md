@@ -25,7 +25,7 @@ It is not a general AI billing dashboard. Official quota windows come from provi
 | `apps/menubar/Sources/TokenMyBarCore` | Provider models, refresh/cache, parsers |
 | `apps/menubar/Sources/TokenMyBarCLI` | Swift CLI binary `token-my-bar` |
 | `apps/www` | React/Vite/Tailwind landing page |
-| `docs/providers` | TokenMyBar provider specs |
+| `docs/` | Product, architecture, and per-vendor specs (`codex.md`, `claude-code.md`, `opencode.md`) |
 
 No separate `apps/cli` package exists.
 
@@ -35,7 +35,11 @@ No separate `apps/cli` package exists.
 - `token-my-bar status --json [--vendor codex|claude-code|opencode]`
 - `token-my-bar doctor`
 
-JSON output uses one Waybar-compatible shape for every vendor: `text`, `tooltip`, `class`, `percentage`, `vendor`, `status`, and `windows`.
+JSON output uses one Waybar-compatible shape for every vendor: `vendor`, `name`, `plan`, `status`, `text`, `tooltip`, `percentage`, `class`, `updated_at`, and `windows`.
+
+The CLI is not shipped in any distribution channel — the DMG and Homebrew cask
+contain `TokenMyBar.app` only. Build it from source to use it (see
+[development.md](development.md)).
 
 ## Config
 
@@ -98,16 +102,19 @@ ttl_seconds = 120
 - No secrets in snapshot cache.
 - Provider tokens/cookies stay on device.
 - Diagnostics redact OAuth tokens, cookies, authorization headers, API keys, and emails where possible.
-- Browser cookie import must be explicit and provider-scoped when implemented.
+- Browser cookie import is provider-scoped: OpenCode only, `opencode.ai` only, and
+  a browser's Safe Storage Keychain key is read only when that browser holds a
+  matching cookie.
 
 ## Distribution Target
 
 - macOS 14+ native app.
 - Direct signed/notarized `.dmg` and Homebrew Cask are release goals.
 - Roadmap: Developer ID signing + notarization once a paid Apple Developer
-  account exists (release.yml/package.sh already support it via
-  `DEVELOPER_ID_APP` + `AC_*` secrets). Until then releases are ad-hoc signed
-  and users must clear quarantine (`--no-quarantine` or `xattr`).
+  account exists. `package.sh` has the branches (`DEVELOPER_ID_APP` + `AC_*`), but
+  `release.yml` does not set those variables, so nothing signs or notarizes today.
+  Releases are ad-hoc signed and quarantine has to be cleared — `install.sh` and
+  the Homebrew cask do that for you; a browser-downloaded DMG needs `xattr`.
 - App Store is future work because sandbox constraints may limit provider auth/log access.
 
 ## Reference Inspiration

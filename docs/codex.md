@@ -24,16 +24,20 @@ stores on the Mac. There is one official path plus a local cost fallback.
 - Response shape (per `ai-usagebar` reference):
   - `rate_limit.primary_window` → session/5-hour lane.
   - `rate_limit.secondary_window` → weekly lane.
-  - Window fields: a percent value (0–100), `reset_after_seconds`, `reset_at`
-    (epoch seconds).
+  - Window fields: `used_percent` (0–100), `reset_after_seconds`, `reset_at`
+    (epoch seconds). `RemoteJSON.resetDate` prefers the absolute `reset_at`
+    because `reset_after_seconds` is the static window length (always 5h/7d),
+    not the time actually left.
 - Mapping:
   - `primary_window` → "Session" row (drives the menu bar percent).
   - `secondary_window` → "Weekly" row.
   - `plan_type` → plan label.
-- The endpoint reports percent **remaining** (starts at 100%, counts down).
-  `CodexOAuthUsageProvider` inverts it to percent **used** via
-  `RemoteJSON.percent(in:remaining: true)`, so Codex counts up 0→100 and colors
-  its bar like the other vendors — 33% remaining renders as 67% used.
+- The endpoint reports percent **used**, already on the 0–100 scale every vendor
+  uses here, so `CodexOAuthUsageProvider` passes it straight through
+  `RemoteJSON.percent(in:)` — there is no inversion step. The chatgpt.com
+  dashboard's "99% remaining" is its own inversion of `used_percent: 1`; treating
+  the payload as "remaining" and flipping it was a real bug, so do not
+  reintroduce one.
 
 ## Local cost fallback
 

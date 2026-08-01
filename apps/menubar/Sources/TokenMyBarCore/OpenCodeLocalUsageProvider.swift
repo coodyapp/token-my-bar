@@ -30,15 +30,27 @@ public struct OpenCodeLocalUsage: Equatable, Sendable {
 
 public struct OpenCodeLocalUsageProvider: ProviderClient {
     public let providerID: ProviderID = .opencode
-    private let databaseURL: URL
+    private let databaseURL: URL?
 
-    public init(databaseURL: URL = OpenCodeLocalUsageProvider.defaultDatabaseURL()) {
+    /// Leaving `databaseURL` nil resolves the default per read, so editing
+    /// `[opencode] db` applies without relaunching the app.
+    public init(databaseURL: URL? = nil) {
         self.databaseURL = databaseURL
     }
 
-    public static func defaultDatabaseURL() -> URL {
+    /// Env wins over the config file: `TOKEN_MY_BAR_OPENCODE_DB` is scoped to
+    /// the one invocation that exports it, while the file is permanent.
+    /// `config` is loaded lazily rather than in a default argument: the
+    /// environment override usually wins, and a default argument would still read
+    /// the file from disk on every call to decide that.
+    public static func defaultDatabaseURL(config: @autoclosure () -> AppConfig = AppConfig.load()) -> URL {
         if let override = ProcessInfo.processInfo.environment["TOKEN_MY_BAR_OPENCODE_DB"], !override.isEmpty {
             return URL(fileURLWithPath: override)
+        }
+        let config = config()
+        // A hand-written path may still carry a `~` that no shell expanded.
+        if let path = config.openCodeDatabasePath {
+            return URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
         }
 
         let xdgDataHome = ProcessInfo.processInfo.environment["XDG_DATA_HOME"]
@@ -102,6 +114,7 @@ public struct OpenCodeLocalUsageProvider: ProviderClient {
     }
 
     public func readUsage() throws -> OpenCodeLocalUsage {
+        let databaseURL = self.databaseURL ?? Self.defaultDatabaseURL()
         guard FileManager.default.fileExists(atPath: databaseURL.path) else {
             throw OpenCodeLocalUsageError.databaseMissing(databaseURL.path)
         }

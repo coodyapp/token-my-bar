@@ -25,6 +25,17 @@ public struct ClaudeOAuthUsageProvider: ProviderClient {
         }
     }
 
+    /// "seven_day_sonnet" -> "Sonnet only", "seven_day_fable" -> "Fable only".
+    static func modelWindowTitle(for key: String) -> String {
+        let model = key
+            .replacingOccurrences(of: "seven_day_", with: "")
+            .replacingOccurrences(of: "sevenDay", with: "")
+            .replacingOccurrences(of: "_", with: " ")
+            .trimmingCharacters(in: .whitespaces)
+        guard !model.isEmpty else { return "Weekly" }
+        return "\(model.prefix(1).uppercased() + model.dropFirst()) only"
+    }
+
     /// Extracts the plan badge ("Pro", "Max", "Team", …) from the stored
     /// credential payload; the usage API response itself carries no plan field.
     static func planFromKeychainPayload(_ object: Any) -> String? {
@@ -38,20 +49,27 @@ public struct ClaudeOAuthUsageProvider: ProviderClient {
     static func snapshot(from object: [String: Any], fallbackPlanName: String? = nil) -> ProviderSnapshot {
         let session = RemoteJSON.findObject(in: object, keys: ["five_hour", "fiveHour"])
         let weekly = RemoteJSON.findObject(in: object, keys: ["seven_day", "sevenDay"])
-        let sonnet = RemoteJSON.findObject(in: object, keys: ["seven_day_sonnet", "sevenDaySonnet"])
-        let opus = RemoteJSON.findObject(in: object, keys: ["seven_day_opus", "sevenDayOpus"])
         let extra = RemoteJSON.findObject(in: object, keys: ["extra_usage", "extraUsage"])
         let percent = RemoteJSON.percent(in: session ?? weekly ?? object)
         var rows = [UsageRow]()
         if let session { rows.append(RemoteJSON.row(key: "session", title: "Session", iconName: "timer", object: session, idleDetail: "Starts when a message is sent")) }
         if let weekly { rows.append(RemoteJSON.row(key: "weekly", title: "Weekly", iconName: "calendar", object: weekly, idleDetail: "Starts when a message is sent")) }
-        if let sonnet { rows.append(RemoteJSON.row(key: "sonnet", title: "Sonnet only", iconName: "arrow.triangle.2.circlepath", object: sonnet)) }
-        if let opus { rows.append(RemoteJSON.row(key: "opus", title: "Opus", iconName: "sparkle", object: opus)) }
+        // Per-model weekly caps are enumerated rather than listed, so a model the
+        // plan gains later ("Fable") appears without a code change.
+        for window in RemoteJSON.windows(in: object, prefixes: ["seven_day_", "sevenDay"], excluding: ["seven_day", "sevenDay"]) {
+            rows.append(RemoteJSON.row(
+                key: window.key,
+                title: Self.modelWindowTitle(for: window.key),
+                iconName: "cpu",
+                object: window.object
+            ))
+        }
         if let extra, let extraRow = Self.extraUsageRow(extra) { rows.append(extraRow) }
+        let unreadable = RemoteJSON.unreadableWindow(in: rows)
 
         return ProviderSnapshot(
             providerID: .claudeCode,
-            status: percent == nil && rows.isEmpty ? .noData : .ok,
+            status: unreadable != nil ? .error : (percent == nil && rows.isEmpty ? .noData : .ok),
             usedTokens: nil,
             unit: .tokens,
             usagePercent: percent,
@@ -62,9 +80,13 @@ public struct ClaudeOAuthUsageProvider: ProviderClient {
             sources: [.oauth, .api],
             confidence: .high,
             isEstimated: false,
-            message: rows.isEmpty ? "OAuth usage returned no windows" : nil,
+            message: unreadable.map { "Usage payload changed: no percentage in the \($0.title) window" }
+                ?? (rows.isEmpty ? "OAuth usage returned no windows" : nil),
             authSummary: "Claude OAuth",
-            planName: RemoteJSON.planName(in: object, keys: ["subscriptionType", "subscription_type", "rate_limit_tier", "rateLimitTier", "plan"]) ?? fallbackPlanName,
+            // The rate-limit tier wins over the subscription type: the tier is what
+            // the percentages on screen are a share of, and the two disagree (a
+            // Max 5x account reports subscriptionType "pro").
+            planName: RemoteJSON.planName(in: object, keys: ["rate_limit_tier", "rateLimitTier", "subscriptionType", "subscription_type", "plan"]) ?? fallbackPlanName,
             usageRows: rows
         )
     }

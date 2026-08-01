@@ -56,14 +56,78 @@ Summary mode can calculate:
 - Use `Command-R` while the popover is focused.
 - Right-click the menu bar item and choose `Refresh`.
 
+## Configuration File
+
+A few settings live in a text file instead of the Settings window, including the
+overrides that keep OpenCode working when `opencode.ai` changes. Create
+`~/.config/token-my-bar/config.toml` (or
+`$XDG_CONFIG_HOME/token-my-bar/config.toml`). It is re-read on every refresh, so
+no relaunch is needed.
+
+```ini
+[ui]
+primary = codex             # codex, claude, or opencode
+
+[refresh]
+ttl_seconds = 120
+
+[opencode]
+cookie = "auth=abc123; other=def"
+workspace_id = wrk_01ABC
+db = ~/.local/share/opencode/opencode.db
+```
+
+- `ui.primary`: vendor shown first and used by `Selected Provider` summary mode.
+  Accepts `codex`/`openai`, `claude`/`claude-code`/`anthropic`, `opencode`.
+- `refresh.ttl_seconds`: how long cached usage is reused before a refresh really
+  fetches (default 120). A shorter refresh interval bounds it to half that
+  interval.
+- `opencode.cookie`: `opencode.ai` session cookie, used instead of reading it
+  from your browser — the fix when TokenMyBar cannot decrypt the browser cookie
+  store. Copy the `Cookie` request header for `opencode.ai` from your browser's
+  developer tools; a full `Cookie: …` header or the bare `auth=…` value both work.
+- `opencode.workspace_id`: the bare `wrk_…` id, skipping workspace discovery —
+  the fix when `opencode.ai` changes and OpenCode reports an error. Take it from
+  the `opencode.ai/workspace/<id>/go` URL; anything that is not a plain id is
+  ignored and discovery runs as usual.
+- `opencode.db`: path to the local OpenCode SQLite database used as fallback
+  history. `~` is expanded. The app cannot see `XDG_DATA_HOME`, so this is how it
+  finds a database outside `~/.local/share/opencode/opencode.db`.
+
+Notes:
+
+- Quote any value containing `;` — an unquoted value ends at the first `#` or
+  `;`, which would cut a cookie in half.
+- `opencode.cookie` is a live credential. Run
+  `chmod 600 ~/.config/token-my-bar/config.toml`; TokenMyBar logs a warning
+  (Console.app, subsystem `app.tokenmybar`) while the file is readable by others.
+- The matching environment variables `TOKEN_MY_BAR_OPENCODE_COOKIE`,
+  `TOKEN_MY_BAR_OPENCODE_WORKSPACE_ID` and `TOKEN_MY_BAR_OPENCODE_DB` override
+  the file, but they only reach the `token-my-bar` CLI: the menu bar app is
+  launched by macOS and inherits no shell environment, so use the file for the
+  app.
+
 ## Privacy
 
-TokenMyBar reads usage from local app sessions and provider APIs using existing local credentials. It does not proxy usage through TokenMyBar servers and does not store secrets in snapshot cache.
+TokenMyBar reads usage from local app sessions and provider APIs using existing local credentials. It does not proxy usage through TokenMyBar servers and does not store secrets in snapshot cache. Exactly which files, Keychain items, and browser cookie stores are read: [privacy.md](privacy.md).
 
 ## Troubleshooting
 
 - If usage is missing, open the source app once and refresh TokenMyBar.
 - If a vendor says `Sign in`, re-authenticate in that vendor's app.
+- If Claude shows no data, approve the macOS Keychain prompt — choose
+  **Always Allow** so it stops asking on every refresh.
+- If OpenCode shows no data, sign in to `opencode.ai` in Arc, Chrome, Brave, Edge,
+  Chromium, Vivaldi, or Firefox first; browser import has nothing to read until a
+  session cookie exists.
+- If a vendor is badged `Stale`, the official source was unreachable and the shown
+  numbers are the last good reading (local history where a fallback exists).
+  Refresh, or re-authenticate if it persists.
+- If macOS blocks the app on first launch, see the Gatekeeper notes in
+  [installation.md](installation.md) — releases are ad-hoc signed, not notarized.
+- If OpenCode keeps failing after an `opencode.ai` change, set
+  `[opencode] workspace_id` or `[opencode] cookie` in the configuration file
+  above; both take effect on the next refresh.
 - If the menu bar is crowded, enable `Collapse to summary automatically`.
 - If the app shows in Activity Monitor but the menu bar icon never appears
   (stuck before startup with 0% CPU), macOS kept a stale launch record for

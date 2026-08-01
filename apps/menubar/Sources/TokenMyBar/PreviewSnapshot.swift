@@ -62,19 +62,27 @@ enum PreviewSnapshot {
     /// data yet.
     private static var degradedSnapshots: [ProviderSnapshot] {
         [
+            // Cached numbers whose windows rolled over weeks ago — the state that
+            // used to render identically to a live reading.
             ProviderSnapshot(
-                providerID: .codex, status: .error, usedTokens: nil,
+                providerID: .codex, status: .stale, usedTokens: nil, usagePercent: 76,
+                refreshedAt: Date().addingTimeInterval(-25 * 24 * 3600),
                 primarySource: .oauth, confidence: .low, isEstimated: false,
-                message: "Codex OAuth usage failed (HTTP 500)"
+                message: "Using cached data; latest refresh returned error", planName: "Plus",
+                usageRows: [
+                    UsageRow(key: "session", title: "Session", value: "76%", resetAt: Date().addingTimeInterval(-25 * 24 * 3600), percent: 76),
+                    UsageRow(key: "weekly", title: "Weekly", value: "100%", resetAt: Date().addingTimeInterval(-18 * 24 * 3600), percent: 100),
+                ]
             ),
             ProviderSnapshot(
                 providerID: .claudeCode, status: .unauthenticated, usedTokens: nil,
                 usagePercent: 42, refreshedAt: Date().addingTimeInterval(-3600),
                 primarySource: .oauth, confidence: .high, isEstimated: false,
-                message: "Sign in again; showing cached data", planName: "Max",
+                message: "Sign in again; showing cached data", planName: "Max 5x",
                 usageRows: [
-                    UsageRow(key: "session", title: "Session", value: "42%", detail: "Resets in 2h 5m", percent: 42),
-                    UsageRow(key: "weekly", title: "Weekly", value: "61%", detail: "Resets in 3d 1h", percent: 61),
+                    UsageRow(key: "session", title: "Session", value: "42%", resetAt: Date().addingTimeInterval(2 * 3600 + 300), percent: 42),
+                    UsageRow(key: "weekly", title: "Weekly", value: "61%", resetAt: Date().addingTimeInterval(3 * 24 * 3600 + 3600), percent: 61),
+                    UsageRow(key: "seven_day_fable", title: "Fable only", value: "—", resetAt: Date().addingTimeInterval(3 * 24 * 3600), percent: nil),
                 ]
             ),
             ProviderSnapshot(
