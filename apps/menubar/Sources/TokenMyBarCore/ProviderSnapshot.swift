@@ -4,6 +4,7 @@ public enum ProviderID: String, CaseIterable, Codable, Sendable {
     case codex
     case claudeCode = "claude-code"
     case opencode
+    case antigravity
 
     public var displayName: String {
         switch self {
@@ -13,6 +14,8 @@ public enum ProviderID: String, CaseIterable, Codable, Sendable {
             "Claude Code"
         case .opencode:
             "OpenCode"
+        case .antigravity:
+            "Antigravity"
         }
     }
 
@@ -26,6 +29,8 @@ public enum ProviderID: String, CaseIterable, Codable, Sendable {
             "sparkles"
         case .opencode:
             "chevron.left.forwardslash.chevron.right"
+        case .antigravity:
+            "arrow.up.forward.circle"
         }
     }
 }
