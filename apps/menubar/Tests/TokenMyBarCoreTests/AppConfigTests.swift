@@ -122,3 +122,26 @@ import Testing
     #expect(AppConfig.vendor(from: "claude-code") == .claudeCode)
     #expect(AppConfig.vendor(from: "open-code") == .opencode)
 }
+
+@Test func appConfigParsesDisabledVendors() {
+    let config = AppConfig(contents: """
+    [vendors]
+    disabled = claude-code, antigravity
+    """)
+
+    #expect(config.disabledVendors == [.claudeCode, .antigravity])
+    #expect(config.enabledVendors == [.codex, .opencode])
+}
+
+@Test func appConfigDisabledVendorsDefaultsToNone() {
+    #expect(AppConfig(contents: "").disabledVendors.isEmpty)
+    #expect(AppConfig(contents: "").enabledVendors == ProviderID.allCases)
+}
+
+@Test func appConfigVendorAliasResolvesEveryRegisteredVendor() {
+    // The CLI derives its help and validation from ProviderID.allCases; every
+    // raw value has to resolve so the two can never drift apart.
+    for id in ProviderID.allCases {
+        #expect(AppConfig.vendor(from: id.rawValue) == id)
+    }
+}
