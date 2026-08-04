@@ -14,7 +14,11 @@ struct TokenMyBarApp {
         let delegate = AppDelegate()
         app.delegate = delegate
         app.setActivationPolicy(.accessory)
-        app.run()
+        // NSApplication.delegate is weak and ARC frees locals after last use,
+        // so the delegate must outlive run() explicitly.
+        withExtendedLifetime(delegate) {
+            app.run()
+        }
     }
 }
 
@@ -53,8 +57,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         popover.behavior = .transient
         popover.contentSize = NSSize(width: popoverWidth, height: 560)
         // NSPopover has no public API to hide its anchor arrow; this KVC key
-        // is the standard (long-stable, widely used) workaround.
-        popover.setValue(true, forKeyPath: "shouldHideAnchor")
+        // is the standard (long-stable, widely used) workaround. Guarded so a
+        // future macOS that drops the private setter shows the arrow instead
+        // of raising NSUndefinedKeyException at launch.
+        if popover.responds(to: NSSelectorFromString("setShouldHideAnchor:")) {
+            popover.setValue(true, forKey: "shouldHideAnchor")
+        }
 
         render()
         scheduleRefreshTimer()
