@@ -62,7 +62,7 @@ import Testing
     // No usage in the last 5h but plenty this week is an ordinary morning;
     // a "No data" badge beside real weekly numbers is a contradiction.
     let databaseURL = try makeOpenCodeDatabase(rows: [
-        (input: 100, output: 50, reasoning: 0, cacheRead: 0, cacheWrite: 0, secondsAgo: 6 * 3_600),
+        (input: 100, output: 50, reasoning: 0, cacheRead: 0, cacheWrite: 0, secondsAgo: 6 * 3_600.0),
     ])
 
     let provider = OpenCodeLocalUsageProvider(databaseURL: databaseURL)
