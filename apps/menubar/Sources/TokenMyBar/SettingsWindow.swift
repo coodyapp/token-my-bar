@@ -206,7 +206,7 @@ struct SettingsView: View {
             }
 
             Section {
-                Text("TokenMyBar reads usage from your existing vendor sessions on this Mac. No data leaves your device.")
+                Text("TokenMyBar reads usage from your existing vendor sessions on this Mac. Requests go only to your vendors, plus a daily anonymous GitHub update check — never to a TokenMyBar server.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
