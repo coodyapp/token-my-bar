@@ -9,12 +9,16 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   menubar:
     name: Menubar (Swift)
     runs-on: macos-15
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Swift version
         run: swift --version
       - name: Build
@@ -25,16 +29,21 @@ jobs:
   www:
     name: Web (pnpm)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Type-check / test
         run: pnpm test:www
+      - name: Lint
+        run: pnpm --filter @token-my-bar/www lint
+      - name: Format check
+        run: pnpm --filter @token-my-bar/www format:check
       - name: Build
         run: pnpm build:www

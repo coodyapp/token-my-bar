@@ -70,13 +70,12 @@ export function Hero() {
             </h1>
 
             <p className="mx-auto max-w-2xl text-gray-300">
-              TokenMyBar is a native macOS menu bar app that gives you
-              real-time insight into token usage, reset windows, and plan
-              limits across Claude Code, OpenAI Codex, OpenCode, and Google
-              Antigravity.
+              TokenMyBar is a native macOS menu bar app that gives you real-time
+              insight into token usage, reset windows, and plan limits across
+              Claude Code, OpenAI Codex, OpenCode, and Google Antigravity.
             </p>
             <div className="items-center justify-center space-y-3 gap-x-3 sm:flex sm:space-y-0">
-              <span className="relative inline-block overflow-hidden rounded-full p-[1.5px]">
+              <div className="relative inline-block overflow-hidden rounded-full p-[1.5px]">
                 <span className="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#FECACA_0%,#B22929_50%,#FECACA_100%)] motion-reduce:animate-none" />
                 <div className="inline-flex h-full w-full cursor-pointer items-center justify-center rounded-full bg-gray-950 text-xs font-medium text-gray-50 backdrop-blur-3xl">
                   <a
@@ -85,11 +84,11 @@ export function Hero() {
                     rel="noopener noreferrer"
                     className="group inline-flex w-full items-center justify-center gap-2 rounded-full border-[1px] border-input bg-gradient-to-tr from-zinc-300/5 via-red-400/20 to-transparent px-10 py-4 text-center text-white transition-all duration-300 hover:scale-[1.03] hover:bg-transparent/90 sm:w-auto"
                   >
-                    <GithubMark className="h-4 w-4 transition-transform duration-300 group-hover:-rotate-12 group-hover:scale-110" />
+                    <GithubMark className="h-4 w-4 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-12" />
                     Star on GitHub
                   </a>
                 </div>
-              </span>
+              </div>
             </div>
           </div>
 

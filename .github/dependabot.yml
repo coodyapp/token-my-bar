@@ -1,0 +1,11 @@
+# Dependabot has no SwiftPM support, so apps/menubar dependencies stay manual.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
