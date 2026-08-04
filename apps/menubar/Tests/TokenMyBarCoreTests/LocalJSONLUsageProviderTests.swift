@@ -156,7 +156,11 @@ import Testing
 
     let snapshot = await provider.snapshot()
 
-    #expect(snapshot.status == .noData)
+    // Real weekly numbers under a "No data" badge is a contradiction: any
+    // meaningful row makes the snapshot .ok, even with the 5h window empty.
+    #expect(snapshot.status == .ok)
+    #expect(snapshot.message == "No usage in the current 5h session")
+    #expect(snapshot.usedTokens == nil)
     #expect(snapshot.usageRows.contains { $0.key == "weekly" && $0.value == "15" })
 }
 

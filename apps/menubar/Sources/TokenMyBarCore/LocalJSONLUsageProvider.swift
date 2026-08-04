@@ -86,7 +86,9 @@ public struct LocalJSONLUsageProvider: ProviderClient {
             let usage = try scanUsage()
             return ProviderSnapshot(
                 providerID: providerID,
-                status: usage.primaryTokens > 0 ? .ok : .noData,
+                // Any meaningful row makes the snapshot .ok: weekly numbers
+                // under a "No data" badge read as a contradiction.
+                status: usage.totalTokens > 0 ? .ok : .noData,
                 usedTokens: usage.primaryTokens > 0 ? usage.primaryTokens : nil,
                 unit: .tokens,
                 windowName: .session,
@@ -97,7 +99,9 @@ public struct LocalJSONLUsageProvider: ProviderClient {
                 isEstimated: true,
                 message: usage.primaryTokens > 0
                     ? "Local samples: \(usage.sampleCount)"
-                    : "Local logs found, but no token usage yet",
+                    : (usage.totalTokens > 0
+                        ? "No usage in the current 5h session"
+                        : "Local logs found, but no token usage yet"),
                 authSummary: authSummary,
                 // Rows of zeros would read as real data downstream and displace
                 // good cached numbers, so an empty scan reports nothing at all.

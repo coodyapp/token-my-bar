@@ -75,7 +75,9 @@ public struct OpenCodeLocalUsageProvider: ProviderClient {
             let usage = try readUsage()
             return ProviderSnapshot(
                 providerID: .opencode,
-                status: usage.primaryTokens > 0 ? .ok : .noData,
+                // Any meaningful row makes the snapshot .ok: weekly numbers
+                // under a "No data" badge read as a contradiction.
+                status: usage.totalTokens > 0 ? .ok : .noData,
                 usedTokens: usage.primaryTokens > 0 ? usage.primaryTokens : nil,
                 unit: .tokens,
                 windowName: .session,
@@ -86,7 +88,9 @@ public struct OpenCodeLocalUsageProvider: ProviderClient {
                 isEstimated: true,
                 message: usage.primaryTokens > 0
                     ? "Local OpenCode sessions: \(usage.sessionCount)"
-                    : "OpenCode database found, but no token usage yet",
+                    : (usage.totalTokens > 0
+                        ? "No usage in the current 5h session"
+                        : "OpenCode database found, but no token usage yet"),
                 authSummary: "Local SQLite / no network auth",
                 // Rows of zeros would read as real data downstream and displace
                 // good cached numbers, so an empty database reports nothing.

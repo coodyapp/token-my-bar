@@ -58,6 +58,22 @@ import Testing
     #expect(usage.tokensInput == 700)
 }
 
+@Test func openCodeSnapshotStaysOkWhenOnlyWeeklyDataExists() async throws {
+    // No usage in the last 5h but plenty this week is an ordinary morning;
+    // a "No data" badge beside real weekly numbers is a contradiction.
+    let databaseURL = try makeOpenCodeDatabase(rows: [
+        (input: 100, output: 50, reasoning: 0, cacheRead: 0, cacheWrite: 0, secondsAgo: 6 * 3_600),
+    ])
+
+    let provider = OpenCodeLocalUsageProvider(databaseURL: databaseURL)
+    let snapshot = await provider.snapshot()
+
+    #expect(snapshot.status == .ok)
+    #expect(snapshot.message == "No usage in the current 5h session")
+    #expect(snapshot.usedTokens == nil)
+    #expect(snapshot.usageRows.contains { $0.title == "Weekly" && $0.percent == nil })
+}
+
 @Test func openCodeSnapshotReportsMissingDatabase() async {
     let provider = OpenCodeLocalUsageProvider(
         databaseURL: URL(fileURLWithPath: "/tmp/token-my-bar-missing-opencode.db")
