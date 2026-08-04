@@ -58,6 +58,25 @@ public struct MenuBarHeadline: Equatable, Sendable {
         snapshots.compactMap { from($0, now: now) }
     }
 
+    /// True when a vendor that belongs in the bar produced no headline.
+    /// Expired auth and errors always qualify; so does a vendor that had a
+    /// number (a percent on the snapshot or any row) but shows nothing — the
+    /// elapsed-window drop above is deliberate, and this is its counterpart
+    /// so the vendor is flagged rather than silently vanishing.
+    public static func needsAttention(_ snapshots: [ProviderSnapshot], shown: Set<ProviderID>) -> Bool {
+        snapshots.contains { snapshot in
+            guard !shown.contains(snapshot.providerID) else { return false }
+            switch snapshot.status {
+            case .unauthenticated, .error:
+                return true
+            case .ok, .stale:
+                return snapshot.usagePercent != nil || snapshot.usageRows.contains { $0.percent != nil }
+            case .noData, .loading:
+                return false
+            }
+        }
+    }
+
     private static func isStale(_ snapshot: ProviderSnapshot) -> Bool {
         switch snapshot.status {
         case .ok: false

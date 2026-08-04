@@ -283,9 +283,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func statusTitle() -> NSAttributedString {
         let segments = statusSegments()
         if segments.isEmpty {
-            // No usable percent: flag attention if a vendor needs sign-in or errored,
-            // instead of a silent "--" that hides the problem.
-            if snapshots.contains(where: { $0.status == .unauthenticated || $0.status == .error }) {
+            // No usable percent: flag attention if a vendor needs sign-in,
+            // errored, or vanished with numbers, instead of a silent "--".
+            if MenuBarHeadline.needsAttention(snapshots, shown: []) {
                 return statusSegment(iconName: "exclamationmark.triangle", title: "")
             }
             return statusSegment(iconName: "chart.bar.xaxis", title: "--")
@@ -331,11 +331,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func needsAttention(besides segments: [MenuBarHeadline]) -> Bool {
-        let shown = Set(segments.map(\.providerID))
-        return snapshots.contains { snapshot in
-            !shown.contains(snapshot.providerID)
-                && (snapshot.status == .unauthenticated || snapshot.status == .error)
-        }
+        MenuBarHeadline.needsAttention(snapshots, shown: Set(segments.map(\.providerID)))
     }
 
     private func effectiveDisplayMode(for segments: [MenuBarHeadline]) -> DisplayMode {
