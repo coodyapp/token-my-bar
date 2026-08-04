@@ -39,15 +39,19 @@ suppressed.
   `opencode.ai` cookie from a local browser (see below). A cookie written into
   that config file is a credential you supplied — keep the file `0600`; the app
   warns when it is readable by anyone else.
-- Antigravity: reads the access token and its expiry from
-  `~/.gemini/oauth_creds.json` (override `TOKEN_MY_BAR_GEMINI_CREDS`), the file
-  the Antigravity / Gemini sign-in writes. Read-only: TokenMyBar never refreshes
-  or rewrites the token, and reports when it has lapsed instead.
+- Antigravity: while the IDE runs, usage comes from a loopback-only (127.0.0.1)
+  RPC to its local language server — no credential is read and nothing leaves
+  the machine for that read. Only when the IDE is closed does the fallback read
+  the access token and its expiry from `~/.gemini/oauth_creds.json` (override
+  `TOKEN_MY_BAR_GEMINI_CREDS`), the file the Antigravity / Gemini sign-in
+  writes. Read-only: TokenMyBar never refreshes or rewrites the token, and
+  reports when it has lapsed instead.
 - Local cost/history scans read known provider log paths only: `~/.claude/projects`,
   `~/.codex/sessions` (override `TOKEN_MY_BAR_CODEX_HOME`), and
   `~/.local/share/opencode/opencode.db` or `$XDG_DATA_HOME/opencode/opencode.db`
-  (override `TOKEN_MY_BAR_OPENCODE_DB`). Antigravity has no local source: its
-  quota endpoint is the only thing read for that vendor.
+  (override `TOKEN_MY_BAR_OPENCODE_DB`). Antigravity keeps no usage log to
+  scan; its local source is the language server RPC described above, and its
+  quota endpoint is only called when the IDE is closed.
 
 ## Network Calls
 

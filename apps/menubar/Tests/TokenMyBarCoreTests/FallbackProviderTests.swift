@@ -167,3 +167,13 @@ private func snapshot(
     #expect(result.status == .noData)
     #expect(result.usageRows.isEmpty)
 }
+
+@Test func registryKeepsAntigravityBehindAFallbackProvider() {
+    // Docs and the merge policy both hinge on this composition: the local
+    // language server is primary and OAuth the fallback. Registering it bare
+    // again would silently bring back the wrong-provenance merge.
+    let providers = ProviderRegistry.defaultProviders()
+    #expect(providers.map(\.providerID) == [.opencode, .codex, .claudeCode, .antigravity])
+    let antigravity = providers.first { $0.providerID == .antigravity }
+    #expect(antigravity is FallbackProvider<AntigravityLocalUsageProvider, AntigravityUsageProvider>)
+}

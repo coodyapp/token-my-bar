@@ -147,11 +147,17 @@ one quota model.
 ## 3. Register in `ProviderRegistry.defaultProviders()`
 
 Add your provider to `defaultProviders()` in
-`Sources/TokenMyBarCore/ProviderClient.swift`. If you also have a local-history
-fallback source, wrap the official provider and the fallback in a
-`FallbackProvider` (same file) — it returns the official snapshot when its status
-is `.ok` and otherwise merges in last-good local data. A vendor with no readable
-local history is registered bare instead, as `AntigravityUsageProvider` is:
+`Sources/TokenMyBarCore/ProviderClient.swift`. If you also have a secondary
+source, wrap the two in a `FallbackProvider` (same file) — it returns the
+primary snapshot when its status is `.ok`; otherwise it tries the fallback,
+returning an authoritative `.ok` fallback (`isEstimated: false`) verbatim and
+merging estimated local-history data into the failed primary's snapshot. Every
+current vendor is wrapped: Codex, Claude, and OpenCode put the official
+endpoint first with local history behind it, while Antigravity inverts the
+order — `AntigravityLocalUsageProvider` (the running IDE's language server) is
+the primary and `AntigravityUsageProvider` (the OAuth quota endpoint) is the
+fallback (see [antigravity.md](antigravity.md)). A vendor with only one source
+is registered bare:
 
 ```swift
 public static func defaultProviders() -> [any ProviderClient] {
