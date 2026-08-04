@@ -6,6 +6,78 @@ All notable changes to TokenMyBar are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-08-03
+
+Hardening release: two independent external reviews were adversarially
+verified against the code, and every confirmed finding is fixed here.
+
+### Fixed
+
+- A malformed Claude `extra_usage` payload (`used_credits: "nan"`) crashed the
+  app: NaN survives min/max clamping and traps `Int(percent.rounded())`.
+  Non-finite values now read as absent, matching the guard the other percent
+  paths already had.
+- Antigravity with the IDE closed but a live OAuth token showed correct data
+  branded "unauthenticated · estimated local history". Antigravity inverts the
+  usual composition (local language server primary, OAuth fallback), and the
+  merge assumed primary meant official; an authoritative fallback now passes
+  through verbatim. A test pins the registry composition.
+- The local Claude/Codex/OpenCode history providers reported "No data" beside
+  real weekly numbers whenever the 5-hour window was quiet. Status now follows
+  the same predicate that emits the rows.
+- A vendor whose windows had all elapsed vanished from the menu bar with no
+  warning glyph; the attention check now also covers ok/stale snapshots that
+  hold a percent but produced no headline.
+- An OpenCode usage-page field rename was reported as generic "No data"; the
+  schema-drift diagnosis now survives to the UI.
+- The CLI exited 64 (usage error) with empty stdout in `--json` mode when the
+  cache had nothing for the requested vendor — a data condition, not a usage
+  error. It now emits a valid no-data payload, so a polling bar renders "--"
+  instead of breaking, and `--vendor` help/validation are derived from the
+  vendor list (antigravity was missing).
+- The app delegate was held only by a weak reference and a local variable, so
+  a release-mode build was permitted to free it before the run loop started —
+  launching with no status item.
+- The private `shouldHideAnchor` popover key is set only when the OS still
+  answers for it, so a future macOS shows the anchor arrow instead of crashing
+  the launch.
+- A stuck Keychain consent prompt stacked one blocked thread per refresh tick;
+  the blocking-IO queue is now serial, and lsof/SQLite/JSONL/credential reads
+  all go through it instead of blocking Swift's cooperative pool.
+- VoiceOver read 69% where the popover showed 70%: one shared formatter now
+  feeds both, and the menu bar item's accessibility title follows the rendered
+  numbers instead of staying "TokenMyBar usage" forever.
+- The update check compared `1.foo.9` as `[1, 9]`; partially-numeric tags are
+  now ignored, and OpenCode token totals use saturating addition like the
+  JSONL provider.
+- `./install.sh v1.0.7` built a `vv1.0.7` download URL; the prefix is stripped.
+- Website: the preview caption failed WCAG AA contrast (now 5.45:1), the demo
+  progress bars told assistive tech 80% while drawing 0% mid-animation, the
+  hero badge rendered "vundefined" under tests, an invalid `span > div > a`
+  nesting, and rows overflowed the card on narrow phones.
+
+### Changed
+
+- The Settings privacy note no longer claims "No data leaves your device" —
+  requests go to your vendors with their own credentials, plus the daily
+  anonymous GitHub update check.
+- The "Custom" display mode is gone: it rendered identically to Icon +
+  Percentage. A persisted "custom" value falls back to Icon + Percentage.
+- With more than two vendors and both space toggles on, the bar now collapses
+  to the summary instead of bare icons, and an explicit Summary choice is
+  respected; the monochrome toggle is renamed to say what it colors (text).
+- Launch-at-login failures show a caption under the toggle instead of silently
+  flipping it back.
+- The CLI honors a new `[vendors] disabled` key in `config.toml`, so it stops
+  fetching (and prompting Keychain consent for) vendors you turned off in the
+  app — the app's own toggle lives in UserDefaults the CLI cannot read.
+- Docs: eight documents still described the v1.2 OAuth-only Antigravity; all
+  now match the shipping local-first implementation, and the user guide no
+  longer documents a colored-icons setting that never existed.
+- CI now runs ESLint and Prettier, `pnpm test` type-checks the website (as
+  CONTRIBUTING already claimed), workflows declare permissions and timeouts,
+  and dependabot watches GitHub Actions and npm.
+
 ## [1.5.0] - 2026-08-01
 
 ### Changed
