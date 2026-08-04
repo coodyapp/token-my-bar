@@ -7,7 +7,7 @@ public struct CodexOAuthUsageProvider: ProviderClient {
 
     public func snapshot() async -> ProviderSnapshot {
         do {
-            let credentials = try Self.credentials()
+            let credentials = try await BlockingIO.run { try Self.credentials() }
             var request = RemoteJSON.request(url: "https://chatgpt.com/backend-api/wham/usage")
             request.setValue("Bearer \(credentials.accessToken)", forHTTPHeaderField: "Authorization")
             if let accountID = credentials.accountID {

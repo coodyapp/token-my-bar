@@ -1,6 +1,7 @@
 import Foundation
 
-/// Runs a blocking credential read off the Swift Concurrency cooperative pool.
+/// Runs blocking IO — credential reads, SQLite, log scans, subprocesses — off
+/// the Swift Concurrency cooperative pool.
 ///
 /// `SecItemCopyMatching` on another app's Keychain item shows the macOS consent
 /// dialog and does not return until it is answered — which, for a menu bar app
@@ -8,11 +9,14 @@ import Foundation
 /// width and never grows, so blocking one of its threads per refresh starves it
 /// until no vendor can refresh at all. Dispatch threads over-subscribe instead,
 /// so a stuck prompt costs one idle thread rather than the whole pool.
+///
+/// The queue is serial on purpose: a stuck prompt then costs exactly one
+/// thread total instead of one per refresh tick, and reads queued behind it
+/// resolve from Keychain's memo cache the moment the prompt is answered.
 enum BlockingIO {
     private static let queue = DispatchQueue(
         label: "app.coody.tokenmybar.blocking-io",
-        qos: .utility,
-        attributes: .concurrent
+        qos: .utility
     )
 
     /// Cancellation cannot interrupt a blocking Security call, so a cancelled

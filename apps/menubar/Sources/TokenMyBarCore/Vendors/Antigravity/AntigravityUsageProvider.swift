@@ -30,7 +30,7 @@ public struct AntigravityUsageProvider: ProviderClient {
 
     public func snapshot() async -> ProviderSnapshot {
         do {
-            let credentials = try storedCredentials()
+            let credentials = try await BlockingIO.run { try storedCredentials() }
             var request = RemoteJSON.request(url: Self.quotaURL)
             request.httpMethod = "POST"
             request.httpBody = Data("{}".utf8)

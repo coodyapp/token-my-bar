@@ -83,7 +83,9 @@ public struct LocalJSONLUsageProvider: ProviderClient {
 
     public func snapshot() async -> ProviderSnapshot {
         do {
-            let usage = try scanUsage()
+            // Scanning JSONL logs is synchronous filesystem work; keep it off
+            // the cooperative pool.
+            let usage = try await BlockingIO.run { try scanUsage() }
             return ProviderSnapshot(
                 providerID: providerID,
                 // Any meaningful row makes the snapshot .ok: weekly numbers

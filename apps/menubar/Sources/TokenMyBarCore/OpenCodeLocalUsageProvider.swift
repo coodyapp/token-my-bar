@@ -72,7 +72,8 @@ public struct OpenCodeLocalUsageProvider: ProviderClient {
 
     public func snapshot() async -> ProviderSnapshot {
         do {
-            let usage = try readUsage()
+            // Synchronous SQLite work stays off the cooperative pool.
+            let usage = try await BlockingIO.run { try readUsage() }
             return ProviderSnapshot(
                 providerID: .opencode,
                 // Any meaningful row makes the snapshot .ok: weekly numbers
