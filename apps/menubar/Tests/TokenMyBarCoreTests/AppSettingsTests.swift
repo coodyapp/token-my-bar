@@ -38,11 +38,31 @@ private func freshSettings() -> AppSettings {
     #expect(settings.isProviderEnabled(.codex))
 }
 
-@Test func appSettingsPersistsLaunchAtLogin() {
-    let settings = freshSettings()
-    #expect(!settings.launchAtLogin)
-    settings.launchAtLogin = true
-    #expect(settings.launchAtLogin)
+@Test func appSettingsDecodesTheRetiredCustomModeAsIconPercentage() {
+    // "Custom" shipped as a selectable mode that rendered identically to
+    // Icon + Percentage; the case is gone, but a persisted value must not
+    // reset the user's preference store to a crash or surprise.
+    let suite = "token-my-bar-tests-\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suite)!
+    defaults.set("custom", forKey: "displayMode")
+    #expect(AppSettings(defaults: defaults).displayMode == .iconPercentage)
+}
+
+@Test func effectiveDisplayModePrefersSummaryOverBareIcons() {
+    // Summary (one icon + percent) is nearly as narrow as three bare icons
+    // and strictly more informative, so it wins when both toggles are on.
+    #expect(DisplayMode.effective(explicit: .iconPercentage, hideLabels: true, collapseToSummary: true, segmentCount: 3) == .summary)
+    #expect(DisplayMode.effective(explicit: .iconPercentage, hideLabels: false, collapseToSummary: true, segmentCount: 3) == .summary)
+    #expect(DisplayMode.effective(explicit: .iconPercentage, hideLabels: true, collapseToSummary: false, segmentCount: 3) == .iconsOnly)
+}
+
+@Test func effectiveDisplayModeRespectsAnExplicitChoiceWhenItFits() {
+    // Two segments never trip the space heuristics.
+    #expect(DisplayMode.effective(explicit: .percentageOnly, hideLabels: true, collapseToSummary: true, segmentCount: 2) == .percentageOnly)
+    // An explicit Summary is already as narrow as the heuristics can make it.
+    #expect(DisplayMode.effective(explicit: .summary, hideLabels: true, collapseToSummary: false, segmentCount: 3) == .summary)
+    // No toggles: the explicit mode stands at any width.
+    #expect(DisplayMode.effective(explicit: .iconPercentage, hideLabels: false, collapseToSummary: false, segmentCount: 4) == .iconPercentage)
 }
 
 @Test func appSettingsPersistsMenuBarPreferences() {

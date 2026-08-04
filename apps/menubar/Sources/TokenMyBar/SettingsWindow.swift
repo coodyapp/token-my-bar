@@ -52,14 +52,19 @@ final class SettingsModel: ObservableObject {
     @Published var launchAtLoginEnabled: Bool {
         didSet {
             guard !isReloading else { return }
-            launchAtLogin.setEnabled(launchAtLoginEnabled)
+            let succeeded = launchAtLogin.setEnabled(launchAtLoginEnabled)
+            launchAtLoginMessage = succeeded
+                ? nil
+                : "macOS refused the change — see System Settings › General › Login Items."
             let actual = launchAtLogin.isEnabled
-            settings.launchAtLogin = actual
             if actual != launchAtLoginEnabled {
                 launchAtLoginEnabled = actual
             }
         }
     }
+
+    /// Why the last launch-at-login change did not take, or nil when it did.
+    @Published var launchAtLoginMessage: String?
 
     @Published var enabledVendors: Set<ProviderID> {
         didSet {
@@ -189,7 +194,7 @@ struct SettingsView: View {
                 Toggle("Collapse to summary automatically", isOn: $model.collapseToSummaryAutomatically)
                 Toggle("Show provider order", isOn: $model.showProviderOrder)
                 Toggle("Show colored usage indicators", isOn: $model.showColoredUsageIndicators)
-                Toggle("Monochrome icons (follow macOS menu bar style)", isOn: $model.monochromeIcons)
+                Toggle("Monochrome menu bar text (follow macOS style)", isOn: $model.monochromeIcons)
             }
 
             Section("Refresh") {
@@ -203,6 +208,11 @@ struct SettingsView: View {
 
             Section("General") {
                 Toggle("Launch at login", isOn: $model.launchAtLoginEnabled)
+                if let message = model.launchAtLoginMessage {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
             }
 
             Section {

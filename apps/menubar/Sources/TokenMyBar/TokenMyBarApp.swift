@@ -178,9 +178,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func toggleLaunchAtLogin() {
-        let enable = !launchAtLogin.isEnabled
-        launchAtLogin.setEnabled(enable)
-        settings.launchAtLogin = launchAtLogin.isEnabled
+        launchAtLogin.setEnabled(!launchAtLogin.isEnabled)
     }
 
     @objc private func openSettings() {
@@ -301,7 +299,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     title.append(NSAttributedString(string: "  "))
                 }
                 switch mode {
-                case .iconPercentage, .custom:
+                case .iconPercentage:
                     title.append(statusSegment(iconName: segment.providerID.iconName, title: segmentTitle(segment), isStale: segment.isStale))
                 case .percentageOnly:
                     title.append(statusText(segmentTitle(segment), isStale: segment.isStale))
@@ -335,11 +333,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func effectiveDisplayMode(for segments: [MenuBarHeadline]) -> DisplayMode {
-        // Three vendors of "icon 100%" is the widest the title ever gets, so that
-        // is the case this setting exists for — a higher threshold never fires.
-        if settings.hideLabelsWhenSpaceLimited, segments.count > 2 { return .iconsOnly }
-        if settings.collapseToSummaryAutomatically, segments.count > 2 { return .summary }
-        return settings.displayMode
+        DisplayMode.effective(
+            explicit: settings.displayMode,
+            hideLabels: settings.hideLabelsWhenSpaceLimited,
+            collapseToSummary: settings.collapseToSummaryAutomatically,
+            segmentCount: segments.count
+        )
     }
 
     private func summaryStatusTitle(for segments: [MenuBarHeadline]) -> NSAttributedString {
