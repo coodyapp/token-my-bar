@@ -24,7 +24,7 @@ public struct OpenCodeLocalUsage: Equatable, Sendable {
     public let lastUpdatedAt: Date?
 
     public var totalTokens: Int {
-        tokensInput + tokensOutput + tokensReasoning + tokensCacheRead + tokensCacheWrite
+        clampedSum(tokensInput, tokensOutput, tokensReasoning, tokensCacheRead, tokensCacheWrite)
     }
 
     public var primaryTokens: Int {
@@ -268,7 +268,7 @@ extension OpenCodeLocalUsage {
                 key: "cache-reasoning",
                 title: "Cache + reasoning",
                 subtitle: "All time, not windowed like Session/Weekly",
-                value: Format.count(tokensCacheRead + tokensCacheWrite + tokensReasoning),
+                value: Format.count(clampedSum(tokensCacheRead, tokensCacheWrite, tokensReasoning)),
                 percent: nil,
                 trend: .unknown,
                 unit: .tokens

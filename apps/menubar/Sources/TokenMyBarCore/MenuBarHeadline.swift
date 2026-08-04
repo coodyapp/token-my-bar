@@ -24,7 +24,19 @@ public struct MenuBarHeadline: Equatable, Sendable {
     }
 
     public var percentText: String {
-        "\(Int(percent.rounded()))%"
+        Format.percent(percent)
+    }
+
+    /// The sentence VoiceOver reads for the status item — the same numbers the
+    /// bar renders, so the spoken value can never freeze at launch time.
+    public static func spokenTitle(for segments: [MenuBarHeadline]) -> String {
+        guard !segments.isEmpty else { return "TokenMyBar usage" }
+        let parts = segments.map { segment in
+            let window = segment.windowLabel.isEmpty ? "" : " (\(segment.windowLabel))"
+            let stale = segment.isStale ? ", stale" : ""
+            return "\(segment.providerID.displayName) \(segment.percentText)\(window)\(stale)"
+        }
+        return "TokenMyBar usage: " + parts.joined(separator: ", ")
     }
 
     /// Builds the headline for one snapshot, or `nil` when the vendor has no

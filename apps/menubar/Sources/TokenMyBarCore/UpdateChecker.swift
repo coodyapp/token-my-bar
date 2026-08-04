@@ -63,11 +63,15 @@ public struct UpdateChecker: Sendable {
     }
 
     private static func components(of version: String) -> [Int] {
-        version
+        let core = version
             .trimmingCharacters(in: CharacterSet(charactersIn: "vV "))
             // Drop any pre-release suffix: "1.3.0-beta.1" compares as 1.3.0.
-            .split(separator: "-").first
-            .map { $0.split(separator: ".").compactMap { Int($0) } } ?? []
+            .split(separator: "-").first ?? ""
+        let parts = core.split(separator: ".").map { Int($0) }
+        // A partially-numeric tag ("1.foo.9") must not compare as [1, 9] and
+        // announce itself over a real release: unparseable means silent.
+        guard !parts.isEmpty, parts.allSatisfy({ $0 != nil }) else { return [] }
+        return parts.compactMap { $0 }
     }
 
     private static func fetchLatestFromGitHub() async throws -> String {
@@ -116,18 +120,27 @@ public struct UpdateCheckStore: Sendable {
 
     /// In-memory store for tests and for a build that should never persist.
     public static func ephemeral() -> UpdateCheckStore {
+        // The lock earns the @unchecked Sendable: the closures run on
+        // whichever task the refresh happens to be on.
         final class Box: @unchecked Sendable {
-            var checkedAt: Date?
-            var version: String?
+            private let lock = NSLock()
+            private var checkedAt: Date?
+            private var version: String?
+
+            var storedCheckedAt: Date? { lock.lock(); defer { lock.unlock() }; return checkedAt }
+            var storedVersion: String? { lock.lock(); defer { lock.unlock() }; return version }
+            func record(_ version: String, at: Date) {
+                lock.lock()
+                defer { lock.unlock() }
+                self.version = version
+                self.checkedAt = at
+            }
         }
         let box = Box()
         return UpdateCheckStore(
-            lastCheckedAt: { box.checkedAt },
-            lastSeenVersion: { box.version },
-            record: { version, at in
-                box.version = version
-                box.checkedAt = at
-            }
+            lastCheckedAt: { box.storedCheckedAt },
+            lastSeenVersion: { box.storedVersion },
+            record: { version, at in box.record(version, at: at) }
         )
     }
 }

@@ -257,6 +257,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let button = statusItem?.button {
             button.image = nil
             button.attributedTitle = statusTitle()
+            // VoiceOver reads the same numbers the bar shows, instead of the
+            // launch-time constant an attributed title otherwise freezes.
+            button.setAccessibilityTitle(MenuBarHeadline.spokenTitle(for: statusSegments()))
         }
 
         let actions = PopoverActions(
@@ -350,7 +353,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let average = segments.map(\.percent).reduce(0, +) / Double(segments.count)
             return statusSegment(
                 iconName: "chart.bar.xaxis",
-                title: "\(Int(average.rounded()))%",
+                title: Format.percent(average),
                 isStale: segments.contains(where: \.isStale)
             )
         case .selectedProvider:

@@ -196,3 +196,22 @@ private enum TestDatabaseError: Error {
     #expect(usage.tokensInput == 10)
     #expect(usage.costUSD == 0)
 }
+
+@Test func openCodeTotalsSaturateInsteadOfTrapping() {
+    // Matches the JSONL provider's defensive arithmetic: a corrupt database
+    // whose per-column sums individually fit Int64 must not trap the app on +.
+    let usage = OpenCodeLocalUsage(
+        tokensInput: .max,
+        tokensOutput: .max,
+        tokensReasoning: .max,
+        tokensCacheRead: .max,
+        tokensCacheWrite: .max,
+        sessionTokens: 0,
+        weeklyTokens: 0,
+        sessionCount: 1,
+        costUSD: 0,
+        lastUpdatedAt: nil
+    )
+    #expect(usage.totalTokens == Int.max)
+    #expect(usage.rows.allSatisfy { !$0.value.isEmpty })
+}

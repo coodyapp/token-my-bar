@@ -560,14 +560,6 @@ private struct ParsedUsage {
     }
 }
 
-/// Saturating sum: per-value clamping alone still leaves the running totals able
-/// to overflow across a very large corrupt log, and an overflow here traps.
-private func clampedSum(_ values: Int...) -> Int {
-    values.reduce(0) { partial, value in
-        let (sum, overflow) = partial.addingReportingOverflow(value)
-        return overflow ? .max : sum
-    }
-}
 
 private extension Int {
     mutating func clampedAdd(_ value: Int) {
