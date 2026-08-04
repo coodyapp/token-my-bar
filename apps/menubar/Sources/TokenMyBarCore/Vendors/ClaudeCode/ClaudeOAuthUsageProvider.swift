@@ -7,7 +7,7 @@ public struct ClaudeOAuthUsageProvider: ProviderClient {
 
     public func snapshot() async -> ProviderSnapshot {
         do {
-            let credentials = try await BlockingIO.run { try Self.storedCredentials() }
+            let credentials = try await BlockingIO.runPrompting { try Self.storedCredentials() }
             var request = RemoteJSON.request(url: "https://api.anthropic.com/api/oauth/usage")
             request.setValue("Bearer \(credentials.token)", forHTTPHeaderField: "Authorization")
             request.setValue("oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")

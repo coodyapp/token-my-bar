@@ -125,7 +125,7 @@ testable, then the minimal fix, one focused commit each.
 ## Review (2026-08-03)
 
 All 17 items landed on `fix/dual-review-remediation`, released as v1.6.0.
-Every fix followed red-green: 155 -> 176 Swift tests, 5 -> 6 www tests, and
+Every fix followed red-green: 151 -> 178 Swift tests, 5 -> 6 www tests, and
 the attention-predicate fix was additionally verified by reverting it (4
 failures) per the project rule. Full www gates (tsc, eslint, prettier,
 vitest, vite build) and shellcheck pass; the release build launches.

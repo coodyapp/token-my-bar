@@ -41,7 +41,9 @@ suppressed.
   warns when it is readable by anyone else.
 - Antigravity: while the IDE runs, usage comes from a loopback-only (127.0.0.1)
   RPC to its local language server — no credential is read and nothing leaves
-  the machine for that read. Only when the IDE is closed does the fallback read
+  the machine for that read. When the language server yields no usable answer —
+  normally because the IDE is closed, but also on a timeout or an empty quota
+  reply — the fallback reads
   the access token and its expiry from `~/.gemini/oauth_creds.json` (override
   `TOKEN_MY_BAR_GEMINI_CREDS`), the file the Antigravity / Gemini sign-in
   writes. Read-only: TokenMyBar never refreshes or rewrites the token, and
@@ -51,7 +53,8 @@ suppressed.
   `~/.local/share/opencode/opencode.db` or `$XDG_DATA_HOME/opencode/opencode.db`
   (override `TOKEN_MY_BAR_OPENCODE_DB`). Antigravity keeps no usage log to
   scan; its local source is the language server RPC described above, and its
-  quota endpoint is only called when the IDE is closed.
+  quota endpoint is called only when that local RPC yields no usable data —
+  normally, when the IDE is closed.
 
 ## Network Calls
 
@@ -63,7 +66,7 @@ credential, and only for enabled providers. The full list:
 | Codex | `GET https://chatgpt.com/backend-api/wham/usage` |
 | Claude | `GET https://api.anthropic.com/api/oauth/usage` |
 | OpenCode | `GET https://opencode.ai/_server?id=<fn>` then `GET https://opencode.ai/workspace/<wrk_…>/go` |
-| Antigravity | `POST http://127.0.0.1:<port>/exa.language_server_pb.LanguageServerService/GetUserStatus` to the language server the running IDE hosts — this never leaves the machine. Only when Antigravity is closed: `POST https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota` (empty `{}` body) and, for the plan badge, `…:loadCodeAssist` |
+| Antigravity | `POST http://127.0.0.1:<port>/exa.language_server_pb.LanguageServerService/GetUserStatus` to the language server the running IDE hosts — this never leaves the machine. Only when that local RPC yields no usable data (normally, Antigravity is closed): `POST https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota` (empty `{}` body) and, for the plan badge, `…:loadCodeAssist` |
 
 One request is not a vendor call:
 

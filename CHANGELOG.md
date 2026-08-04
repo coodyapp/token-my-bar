@@ -495,7 +495,8 @@ First stable release.
   cache files are `0600`. Keychain access is read-only behind the standard
   macOS consent prompt. All SQLite access uses parameterized queries.
 
-[Unreleased]: https://github.com/coodyapp/token-my-bar/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/coodyapp/token-my-bar/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/coodyapp/token-my-bar/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/coodyapp/token-my-bar/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/coodyapp/token-my-bar/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/coodyapp/token-my-bar/compare/v1.2.0...v1.3.0

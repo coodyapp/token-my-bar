@@ -58,7 +58,13 @@ final class SettingsModel: ObservableObject {
                 : "macOS refused the change — see System Settings › General › Login Items."
             let actual = launchAtLogin.isEnabled
             if actual != launchAtLoginEnabled {
+                // Unlike a plain stored property, assigning a @Published
+                // property inside its own didSet re-fires the observer — the
+                // second pass would see a no-op success and wipe the failure
+                // message before SwiftUI ever renders it.
+                isReloading = true
                 launchAtLoginEnabled = actual
+                isReloading = false
             }
         }
     }
@@ -103,8 +109,9 @@ final class SettingsModel: ObservableObject {
         didSet { settings.monochromeIcons = monochromeIcons; onDisplayPreferencesChange() }
     }
 
-    /// Set while `reload()` mirrors external state in, so the property observers
-    /// don't read it back as a user edit and re-apply it.
+    /// Set while state is mirrored in from outside (`reload()`, the
+    /// failed-toggle revert above), so the property observers don't read the
+    /// assignment back as a user edit and re-apply it.
     private var isReloading = false
     private let settings: AppSettings
     private let launchAtLogin: LaunchAtLoginManager

@@ -96,7 +96,8 @@ ttl_seconds = 120
 - Fallback: OAuth credentials from `~/.gemini/oauth_creds.json` (override
   `TOKEN_MY_BAR_GEMINI_CREDS`), written by the Antigravity / Gemini sign-in,
   against `POST https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota` —
-  used only while the IDE is closed and the stored token (one-hour life, never
+  used only when the local RPC yields no usable data (normally, the IDE is
+  closed) and the stored token (one-hour life, never
   refreshed) is alive; an expired sign-in is reported, not renewed.
 - Fallback plan badge: best-effort `POST …/v1internal:loadCodeAssist`; a failure
   there never fails the refresh. The primary carries the plan name itself.

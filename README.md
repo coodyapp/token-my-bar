@@ -9,7 +9,7 @@ TokenMyBar is a native macOS menu bar app that gives you real-time insight into 
 - Native macOS popover with one material background, system icons, and system colors.
 - Menu bar usage like `OpenCode icon 8% Codex icon 27% Claude icon 14% Antigravity icon 34%`.
 - Vendor sections for OpenCode, Codex, Claude, and Antigravity with reset windows and usage meters.
-- Antigravity adds one grouped "Gemini models" row — the same allowance its own quota screen shows; per-model rows appear only via the OAuth fallback when the IDE is closed ([docs/antigravity.md](docs/antigravity.md)).
+- Antigravity adds one grouped "Gemini models" row — the same allowance its own quota screen shows; per-model rows appear only via the OAuth fallback, normally when the IDE is closed ([docs/antigravity.md](docs/antigravity.md)).
 - Settings for display mode, enabled vendors, summary calculation, and menu bar behavior.
 
 ## Install

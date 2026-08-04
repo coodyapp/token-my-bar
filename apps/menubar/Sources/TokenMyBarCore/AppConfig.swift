@@ -144,7 +144,18 @@ public struct AppConfig: Equatable, Sendable {
             .flatMap { OpenCodeCookieUsageProvider.isValidWorkspaceID($0) ? $0 : nil }
         self.openCodeDatabasePath = AppConfig.nonEmpty(values["opencode.db"])
         self.disabledVendors = AppConfig.nonEmpty(values["vendors.disabled"])
-            .map { $0.split(separator: ",").compactMap { AppConfig.vendor(from: String($0)) } } ?? []
+            .map { raw in
+                raw.split(separator: ",").compactMap { token in
+                    guard let id = AppConfig.vendor(from: String(token)) else {
+                        // A silently dropped typo would re-trigger the very
+                        // consent prompts this key exists to suppress. Static
+                        // message: os_log redacts interpolated values.
+                        Log.app.notice("[vendors] disabled contains an unrecognized vendor name; run `token-my-bar doctor` for the valid list")
+                        return nil
+                    }
+                    return id
+                }
+            } ?? []
     }
 
     /// Unwraps one value: quoted takes it verbatim, unquoted ends at an inline

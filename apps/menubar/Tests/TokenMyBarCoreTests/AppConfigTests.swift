@@ -133,6 +133,17 @@ import Testing
     #expect(config.enabledVendors == [.codex, .opencode])
 }
 
+@Test func appConfigDisabledVendorsDropsUnknownNamesButKeepsValidSiblings() {
+    // A typo must not silently re-enable the vendor (and its consent
+    // prompts); the unknown token is logged and the valid ones still apply.
+    let config = AppConfig(contents: """
+    [vendors]
+    disabled = clade, antigravity
+    """)
+
+    #expect(config.disabledVendors == [.antigravity])
+}
+
 @Test func appConfigDisabledVendorsDefaultsToNone() {
     #expect(AppConfig(contents: "").disabledVendors.isEmpty)
     #expect(AppConfig(contents: "").enabledVendors == ProviderID.allCases)

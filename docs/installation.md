@@ -76,7 +76,8 @@ TokenMyBar reads usage from tools you already use — there is no separate sign-
   shell environment.
 - **Google Antigravity** — while Antigravity runs, usage comes straight from
   the language server it hosts on your Mac (loopback only, no token needed).
-  When it is closed, TokenMyBar falls back to `~/.gemini/oauth_creds.json`,
+  When it is closed — or its local server does not answer usably — TokenMyBar
+  falls back to `~/.gemini/oauth_creds.json`,
   written by the Antigravity / Gemini sign-in. No Keychain prompt either way:
   the fallback is a plain file read. That stored token is short-lived and
   TokenMyBar never refreshes it, so if the vendor reports an expired sign-in,

@@ -14,8 +14,8 @@ Open Settings from the popover menu and choose `Display Mode`:
 - `Icon + Percentage`: native vendor icon followed by usage percentage.
 - `Percentage Only`: usage percentages without icons.
 - `Icons Only`: compact vendor icons without labels.
-- `Summary`: one calculated percentage.
-- `Custom`: currently follows icon plus percentage while preserving future custom behavior.
+- `Summary`: one calculated percentage. (A `Custom` mode from earlier versions
+  was removed; a saved Custom setting falls back to Icon + Percentage.)
 
 ## Plan Badges
 
@@ -57,7 +57,8 @@ Summary mode can calculate:
 - `Collapse to summary automatically`: switches to summary when multiple vendors would take too much space.
 - `Show provider order`: keeps selected primary vendor first when configured.
 - `Show colored usage indicators`: lets menu bar text use accent color when monochrome is disabled.
-- `Monochrome icons`: follows macOS menu bar style.
+- `Monochrome menu bar text (follow macOS style)`: keeps the menu bar text in
+  the standard monochrome style; turn it off to let colored indicators apply.
 
 ## Refresh
 
@@ -80,6 +81,9 @@ primary = codex             # codex, claude, opencode, or antigravity
 [refresh]
 ttl_seconds = 120
 
+[vendors]
+disabled = claude-code, antigravity
+
 [opencode]
 cookie = "auth=abc123; other=def"
 workspace_id = wrk_01ABC
@@ -92,6 +96,10 @@ db = ~/.local/share/opencode/opencode.db
 - `refresh.ttl_seconds`: how long cached usage is reused before a refresh really
   fetches (default 120). A shorter refresh interval bounds it to half that
   interval.
+- `vendors.disabled`: comma-separated vendors the `token-my-bar` CLI must not
+  fetch (same names as `ui.primary`). The app's Settings toggles live in
+  UserDefaults, which the CLI cannot read — set this so `--refresh` skips
+  vendors you turned off, including their Keychain consent prompts.
 - `opencode.cookie`: `opencode.ai` session cookie, used instead of reading it
   from your browser — the fix when TokenMyBar cannot decrypt the browser cookie
   store. Copy the `Cookie` request header for `opencode.ai` from your browser's
