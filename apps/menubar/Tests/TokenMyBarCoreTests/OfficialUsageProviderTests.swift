@@ -152,6 +152,30 @@ import Testing
     #expect(row?.detail == "39% used")
 }
 
+@Test func claudeExtraUsageRejectsNonFiniteValuesInsteadOfTrapping() {
+    // NaN survives min/max clamping (all comparisons are false), so an
+    // unguarded Int(percent.rounded()) traps. Unreadable values read as absent.
+    let nanUsed = ClaudeOAuthUsageProvider.extraUsageRow([
+        "is_enabled": true, "monthly_limit": 20_000, "used_credits": "nan",
+    ])
+    #expect(nanUsed?.value == "0%")
+
+    // inf/inf = NaN inside the percent math; an infinite limit is no limit.
+    #expect(ClaudeOAuthUsageProvider.extraUsageRow([
+        "is_enabled": true, "monthly_limit": "inf", "used_credits": "inf",
+    ]) == nil)
+
+    let negative = ClaudeOAuthUsageProvider.extraUsageRow([
+        "is_enabled": true, "monthly_limit": 20_000, "used_credits": -500,
+    ])
+    #expect(negative?.value == "0%")
+
+    let huge = ClaudeOAuthUsageProvider.extraUsageRow([
+        "is_enabled": true, "monthly_limit": 20_000, "used_credits": 1e18,
+    ])
+    #expect(huge?.value == "100%")
+}
+
 @Test func claudeExtraUsageIgnoredWhenDisabled() {
     #expect(ClaudeOAuthUsageProvider.extraUsageRow(["is_enabled": false, "monthly_limit": 20_000, "used_credits": 100]) == nil)
     #expect(ClaudeOAuthUsageProvider.extraUsageRow(["monthly_limit": 0]) == nil)

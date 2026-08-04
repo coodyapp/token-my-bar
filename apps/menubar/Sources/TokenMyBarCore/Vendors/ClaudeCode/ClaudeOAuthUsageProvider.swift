@@ -174,10 +174,12 @@ public struct ClaudeOAuthUsageProvider: ProviderClient {
     }
 
     private static func doubleValue(_ object: [String: Any], keys: [String]) -> Double? {
+        // Non-finite values read as absent: a NaN here survives min/max
+        // clamping and traps in Int(percent.rounded()).
         for key in keys {
-            if let value = object[key] as? Double { return value }
+            if let value = object[key] as? Double, value.isFinite { return value }
             if let value = object[key] as? Int { return Double(value) }
-            if let value = object[key] as? String, let parsed = Double(value) { return parsed }
+            if let value = object[key] as? String, let parsed = Double(value), parsed.isFinite { return parsed }
         }
         return nil
     }
