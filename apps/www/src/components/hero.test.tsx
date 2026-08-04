@@ -28,6 +28,12 @@ describe("Hero", () => {
     ).toBeInTheDocument()
   })
 
+  it("shows a real version in the badge, never 'vundefined'", () => {
+    render(<Hero />)
+
+    expect(screen.getByText(/^v\d+\.\d+\.\d+/)).toBeInTheDocument()
+  })
+
   it("copies the install command to the clipboard on click", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, "clipboard", {
@@ -45,7 +51,9 @@ describe("Hero", () => {
       )
     )
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: /copied/i })).toBeInTheDocument()
+      expect(
+        screen.getByRole("button", { name: /copied/i })
+      ).toBeInTheDocument()
     )
   })
 

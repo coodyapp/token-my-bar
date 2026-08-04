@@ -78,3 +78,28 @@ private func row(_ key: String, _ percent: Double?, resetIn: TimeInterval? = 360
     #expect(MenuBarHeadline.from(snap(.opencode, percent: 12))?.percentText == "12%")
     #expect(MenuBarHeadline.from(snap(.opencode))?.percentText == nil)
 }
+
+@Test func attentionFlagsVendorsThatVanishedWithNumbers() {
+    // A vendor whose windows all elapsed produces no headline (deliberate),
+    // so it must raise the warning glyph instead of silently vanishing while
+    // the other vendors keep showing figures.
+    let vanished = snap(.codex, status: .stale, rows: [row("weekly", 100, resetIn: -60)])
+    let fresh = snap(.claudeCode, status: .ok, rows: [row("weekly", 100, resetIn: -60)])
+
+    #expect(MenuBarHeadline.from(vanished) == nil)
+    #expect(MenuBarHeadline.needsAttention([vanished], shown: []))
+    #expect(MenuBarHeadline.needsAttention([fresh], shown: []))
+}
+
+@Test func attentionFlagsUnauthenticatedAndErroredVendorsButNotShownOnes() {
+    let unauth = snap(.codex, status: .unauthenticated)
+    #expect(MenuBarHeadline.needsAttention([unauth], shown: []))
+    #expect(!MenuBarHeadline.needsAttention([unauth], shown: [.codex]))
+}
+
+@Test func attentionIgnoresVendorsWithNothingToShow() {
+    // .noData with no numbers is an ordinary empty account, not a failure —
+    // and a headline-producing vendor is already on screen.
+    #expect(!MenuBarHeadline.needsAttention([snap(.opencode, status: .noData)], shown: []))
+    #expect(!MenuBarHeadline.needsAttention([snap(.opencode, status: .ok, percent: 12)], shown: [.opencode]))
+}

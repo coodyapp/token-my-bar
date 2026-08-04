@@ -119,34 +119,47 @@ The quota response carries no tier, so the badge costs a second call:
   `tier_id` / `plan` / `currentTier` key in the quota response, and finally to no
   badge at all.
 
-## No local fallback
+## Local first, OAuth fallback
 
-Antigravity is registered bare in `ProviderRegistry.defaultProviders()` — not
-wrapped in `FallbackProvider` like Codex, Claude, and OpenCode. It keeps no
-per-request usage file this app can read, so the quota endpoint is the only
-source; when it fails there is nothing behind it but the last-good snapshot
-cache.
+Antigravity is wrapped in `FallbackProvider` in
+`ProviderRegistry.defaultProviders()` like Codex, Claude, and OpenCode — but
+with the order inverted: `AntigravityLocalUsageProvider` (the language server)
+is the primary and `AntigravityUsageProvider` (the quota endpoint) is the
+fallback. The local provider finds the server's listening loopback port via
+`lsof` and POSTs `{}` to it; when Antigravity is not running it fails fast (no
+port found, "Antigravity is not running") and the OAuth path answers instead.
+That fallback is authoritative — a `.ok` snapshot with `isEstimated: false` —
+so `FallbackProvider` returns it verbatim rather than merging it as estimated
+local data. When both fail there is nothing behind them but the last-good
+snapshot cache.
 
 ## Key files
 
-- Provider: `Sources/TokenMyBarCore/Vendors/Antigravity/AntigravityUsageProvider.swift`
+- Primary (language server): `Sources/TokenMyBarCore/Vendors/Antigravity/AntigravityLocalUsageProvider.swift`
+- Fallback (quota endpoint): `Sources/TokenMyBarCore/Vendors/Antigravity/AntigravityUsageProvider.swift`
 - JSON parsing helpers: `Sources/TokenMyBarCore/Vendors/Support/RemoteJSON.swift`
 - Registration: `Sources/TokenMyBarCore/ProviderClient.swift`
 - Error mapping: `Sources/TokenMyBarCore/Vendors/Support/ProviderSnapshot+Failure.swift`
-- Live payload shapes: `Tests/TokenMyBarCoreTests/AntigravityUsageProviderTests.swift`
+- Live payload shapes: `Tests/TokenMyBarCoreTests/AntigravityLocalUsageProviderTests.swift`
+  and `Tests/TokenMyBarCoreTests/AntigravityUsageProviderTests.swift`
 
 ## Troubleshooting
 
-- **Vendor shows `Sign in`** — no credential file, or it holds no access token
-  ("Antigravity credentials not found — sign in to Antigravity once"). Sign in to
-  Antigravity once, then refresh. A rejected token (HTTP 401/403) reaches the
-  same `unauthenticated` state via `.failure(...)`, worded "Authentication
-  expired — sign in again"; any other HTTP status becomes an `error` reading
-  "Antigravity usage failed (HTTP <status>)".
-- **"Antigravity sign-in expired"** — the stored token lapsed. Open Antigravity
-  once so it rewrites `~/.gemini/oauth_creds.json`; TokenMyBar will not renew it
-  for you.
-- **Every model reads 0%** — that is what an untouched quota looks like
+- **Vendor shows `Sign in`** — Antigravity is not running, so the no-token
+  language server could not answer ("Antigravity is not running"), and the
+  OAuth fallback had nothing valid behind it. Starting Antigravity fixes both:
+  the language server answers, and signing in rewrites the credential file. On
+  the fallback path itself, a missing credential file or one with no access
+  token reads "Antigravity credentials not found — sign in to Antigravity
+  once"; a rejected token (HTTP 401/403) reaches the same `unauthenticated`
+  state via `.failure(...)`, worded "Authentication expired — sign in again";
+  any other HTTP status becomes an `error` reading "Antigravity usage failed
+  (HTTP <status>)".
+- **"Antigravity sign-in expired"** — the stored token the fallback needs
+  lapsed while Antigravity was closed. Open Antigravity once: while it runs the
+  language server answers with no token at all, and it rewrites
+  `~/.gemini/oauth_creds.json`; TokenMyBar will not renew the token for you.
+- **Every row reads 0%** — that is what an untouched quota looks like
   (`remainingFraction: 1`), not a parse failure. Suspect a genuine bug only if
   the vendor's own screen disagrees, i.e. shows something other than "100%
   remaining".
@@ -161,5 +174,4 @@ cache.
 ## Not implemented (future)
 
 Token refresh (the app reads the stored access token and reports when it has
-lapsed), a local usage-log fallback, and per-model quota history are not
-implemented.
+lapsed) and per-model quota history are not implemented.

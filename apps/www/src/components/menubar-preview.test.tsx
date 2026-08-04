@@ -25,6 +25,8 @@ describe("MenubarPreview", () => {
     render(<MenubarPreview />)
 
     expect(screen.getByRole("button", { name: /refresh/i })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /settings/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: /settings/i })
+    ).toBeInTheDocument()
   })
 })

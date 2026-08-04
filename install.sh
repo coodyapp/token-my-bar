@@ -35,8 +35,10 @@ if [[ -z "$version" ]]; then
   tag=$(curl -fsSL --connect-timeout 10 "https://api.github.com/repos/$REPO/releases/latest" |
     sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
   [[ -n "$tag" ]] || fail "Could not determine the latest release tag."
-  version="${tag#v}"
+  version="$tag"
 fi
+# Accept both "1.0.7" and "v1.0.7": the URL below adds its own "v".
+version="${version#v}"
 
 dmg="$APP_NAME-$version.dmg"
 base_url="https://github.com/$REPO/releases/download/v$version"

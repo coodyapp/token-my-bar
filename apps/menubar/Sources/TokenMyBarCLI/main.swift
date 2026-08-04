@@ -37,7 +37,7 @@ struct Status: AsyncParsableCommand {
     @Flag(name: .long, help: "Print a Waybar-compatible per-vendor JSON payload.")
     var json = false
 
-    @Option(name: .long, help: "Vendor to print: codex, claude-code, or opencode.")
+    @Option(name: .long, help: "Vendor to print: \(ProviderID.allCases.map(\.rawValue).joined(separator: ", ")).")
     var vendor: String?
 
     func run() async throws {
@@ -48,13 +48,26 @@ struct Status: AsyncParsableCommand {
         // a warm cache. Reading the cache directly instead made every invocation
         // after the first serve whatever was on disk, forever — a status bar
         // polling this printed weeks-old numbers labelled "ok".
-        let snapshots = await refresher.refresh(ttl: refresh ? 0 : config.refreshTTL)
+        // `[vendors] disabled` is honored here: the app's own toggle lives in
+        // UserDefaults the CLI never reads, and fetching a disabled vendor can
+        // raise its Keychain/browser-store consent prompts.
+        let snapshots = await refresher.refresh(enabled: config.enabledVendors, ttl: refresh ? 0 : config.refreshTTL)
 
         let status = CombinedStatusFormatter.format(snapshots, primary: config.primaryVendor)
 
         if json {
-            let snapshot = try selectSnapshot(from: snapshots, status: status, config: config)
-            let data = try JSONEncoder.tokenMyBar.encode(snapshot.vendorReport())
+            let report: VendorUsageReport
+            switch SnapshotSelection.select(from: snapshots, vendor: vendor, primary: config.primaryVendor, combined: status.snapshot) {
+            case .snapshot(let snapshot):
+                report = snapshot.vendorReport()
+            case .unknownVendor(let raw):
+                throw ValidationError("Unknown vendor '\(raw)'. Expected \(ProviderID.allCases.map(\.rawValue).joined(separator: ", ")).")
+            case .unavailable(let providerID):
+                // A data condition, not a usage error: still emit the uniform
+                // payload so a polling bar renders "--" instead of breaking.
+                report = SnapshotSelection.placeholderReport(for: providerID)
+            }
+            let data = try JSONEncoder.tokenMyBar.encode(report)
             FileHandle.standardOutput.write(data)
             FileHandle.standardOutput.write(Data("\n".utf8))
             return
@@ -83,30 +96,4 @@ struct Status: AsyncParsableCommand {
         }
     }
 
-    private func selectSnapshot(
-        from snapshots: [ProviderSnapshot],
-        status: CombinedStatus,
-        config: AppConfig
-    ) throws -> ProviderSnapshot {
-        if let vendor {
-            guard let providerID = AppConfig.vendor(from: vendor) else {
-                throw ValidationError("Unknown vendor '\(vendor)'. Expected codex, claude-code, or opencode.")
-            }
-            guard let snapshot = snapshots.first(where: { $0.providerID == providerID }) else {
-                throw ValidationError("No snapshot available for \(providerID.rawValue). Run with --refresh first.")
-            }
-            return snapshot
-        }
-
-        if let primary = config.primaryVendor,
-           let snapshot = snapshots.first(where: { $0.providerID == primary }) {
-            return snapshot
-        }
-
-        if let snapshot = status.snapshot ?? snapshots.first {
-            return snapshot
-        }
-
-        throw ValidationError("No snapshots available. Run with --refresh first.")
-    }
 }

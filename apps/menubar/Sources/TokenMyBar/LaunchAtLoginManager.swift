@@ -12,7 +12,10 @@ struct LaunchAtLoginManager {
         SMAppService.mainApp.status == .enabled
     }
 
-    func setEnabled(_ enabled: Bool) {
+    /// Returns whether the change took, so callers can tell the user instead
+    /// of silently reverting the toggle.
+    @discardableResult
+    func setEnabled(_ enabled: Bool) -> Bool {
         do {
             if enabled {
                 if SMAppService.mainApp.status != .enabled {
@@ -23,8 +26,10 @@ struct LaunchAtLoginManager {
                     try SMAppService.mainApp.unregister()
                 }
             }
+            return true
         } catch {
             Log.app.error("launch-at-login update failed: \(error.localizedDescription)")
+            return false
         }
     }
 }

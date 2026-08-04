@@ -31,6 +31,13 @@ public enum Format {
         return "Resets in \(minutes)m"
     }
 
+    /// Rounded percent for display and accessibility: 69.6 → "70%". One home
+    /// so a visible label and the value VoiceOver reads can never disagree.
+    public static func percent(_ value: Double) -> String {
+        guard value.isFinite else { return "—" }
+        return "\(Int(value.rounded()))%"
+    }
+
     /// Compact integer count, rounded to the nearest unit: `1_500` → "2K",
     /// `2_400_000` → "2M".
     static func count(_ value: Int) -> String {

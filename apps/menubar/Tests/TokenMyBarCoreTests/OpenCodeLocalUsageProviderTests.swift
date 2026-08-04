@@ -58,6 +58,22 @@ import Testing
     #expect(usage.tokensInput == 700)
 }
 
+@Test func openCodeSnapshotStaysOkWhenOnlyWeeklyDataExists() async throws {
+    // No usage in the last 5h but plenty this week is an ordinary morning;
+    // a "No data" badge beside real weekly numbers is a contradiction.
+    let databaseURL = try makeOpenCodeDatabase(rows: [
+        (input: 100, output: 50, reasoning: 0, cacheRead: 0, cacheWrite: 0, secondsAgo: 6 * 3_600.0),
+    ])
+
+    let provider = OpenCodeLocalUsageProvider(databaseURL: databaseURL)
+    let snapshot = await provider.snapshot()
+
+    #expect(snapshot.status == .ok)
+    #expect(snapshot.message == "No usage in the current 5h session")
+    #expect(snapshot.usedTokens == nil)
+    #expect(snapshot.usageRows.contains { $0.title == "Weekly" && $0.percent == nil })
+}
+
 @Test func openCodeSnapshotReportsMissingDatabase() async {
     let provider = OpenCodeLocalUsageProvider(
         databaseURL: URL(fileURLWithPath: "/tmp/token-my-bar-missing-opencode.db")
@@ -179,4 +195,23 @@ private enum TestDatabaseError: Error {
 
     #expect(usage.tokensInput == 10)
     #expect(usage.costUSD == 0)
+}
+
+@Test func openCodeTotalsSaturateInsteadOfTrapping() {
+    // Matches the JSONL provider's defensive arithmetic: a corrupt database
+    // whose per-column sums individually fit Int64 must not trap the app on +.
+    let usage = OpenCodeLocalUsage(
+        tokensInput: .max,
+        tokensOutput: .max,
+        tokensReasoning: .max,
+        tokensCacheRead: .max,
+        tokensCacheWrite: .max,
+        sessionTokens: 0,
+        weeklyTokens: 0,
+        sessionCount: 1,
+        costUSD: 0,
+        lastUpdatedAt: nil
+    )
+    #expect(usage.totalTokens == Int.max)
+    #expect(usage.rows.allSatisfy { !$0.value.isEmpty })
 }

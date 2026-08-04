@@ -14,16 +14,17 @@ Open Settings from the popover menu and choose `Display Mode`:
 - `Icon + Percentage`: native vendor icon followed by usage percentage.
 - `Percentage Only`: usage percentages without icons.
 - `Icons Only`: compact vendor icons without labels.
-- `Summary`: one calculated percentage.
-- `Custom`: currently follows icon plus percentage while preserving future custom behavior.
+- `Summary`: one calculated percentage. (A `Custom` mode from earlier versions
+  was removed; a saved Custom setting falls back to Icon + Percentage.)
 
 ## Plan Badges
 
 Each vendor section shows your subscription plan next to the vendor name when
 it can be determined: Claude Code (e.g. `Pro`, `Max 5x`), OpenAI Codex
-(e.g. `Plus`), OpenCode (`Go`), and Antigravity (e.g. `Standard`). Antigravity's
-badge comes from a separate best-effort call, so usage can be correct while the
-badge is missing.
+(e.g. `Plus`), OpenCode (`Go`), and Antigravity (e.g. `Pro`). While Antigravity
+runs, its badge arrives with the usage reading; on the OAuth fallback it comes
+from a separate best-effort call, so usage can be correct while the badge is
+missing.
 
 ## Vendors
 
@@ -36,10 +37,11 @@ Use `Vendors` to enable or disable:
 
 Disabled vendors are skipped during refresh and hidden from the menu bar.
 
-Antigravity shows one row per Gemini model, ordered worst first — the model
-closest to its cap leads, and the menu bar percentage is that worst model. A
-model at 0% has an untouched quota; Antigravity's own screen calls the same
-thing "100% remaining".
+Antigravity shows one grouped `Gemini models` row — all Gemini models share
+that allowance, and it is the same figure Antigravity's own quota screen shows.
+Per-model rows, ordered worst first, appear only when Antigravity is closed and
+the OAuth fallback answers instead. A row at 0% has an untouched quota;
+Antigravity's own screen calls the same thing "100% remaining".
 
 ## Summary Calculation
 
@@ -55,8 +57,8 @@ Summary mode can calculate:
 - `Collapse to summary automatically`: switches to summary when multiple vendors would take too much space.
 - `Show provider order`: keeps selected primary vendor first when configured.
 - `Show colored usage indicators`: lets menu bar text use accent color when monochrome is disabled.
-- `Monochrome icons`: follows macOS menu bar style.
-- `Use original colored icons`: reserved for vendor-branded icons.
+- `Monochrome menu bar text (follow macOS style)`: keeps the menu bar text in
+  the standard monochrome style; turn it off to let colored indicators apply.
 
 ## Refresh
 
@@ -79,6 +81,9 @@ primary = codex             # codex, claude, opencode, or antigravity
 [refresh]
 ttl_seconds = 120
 
+[vendors]
+disabled = claude-code, antigravity
+
 [opencode]
 cookie = "auth=abc123; other=def"
 workspace_id = wrk_01ABC
@@ -91,6 +96,10 @@ db = ~/.local/share/opencode/opencode.db
 - `refresh.ttl_seconds`: how long cached usage is reused before a refresh really
   fetches (default 120). A shorter refresh interval bounds it to half that
   interval.
+- `vendors.disabled`: comma-separated vendors the `token-my-bar` CLI must not
+  fetch (same names as `ui.primary`). The app's Settings toggles live in
+  UserDefaults, which the CLI cannot read — set this so `--refresh` skips
+  vendors you turned off, including their Keychain consent prompts.
 - `opencode.cookie`: `opencode.ai` session cookie, used instead of reading it
   from your browser — the fix when TokenMyBar cannot decrypt the browser cookie
   store. Copy the `Cookie` request header for `opencode.ai` from your browser's
@@ -135,13 +144,15 @@ TokenMyBar reads usage from local app sessions and provider APIs using existing 
   Chromium, Vivaldi, or Firefox first; browser import has nothing to read until a
   session cookie exists.
 - If Antigravity says `Sign in`, or shows **Antigravity sign-in expired — open
-  Antigravity once to renew**, just open Antigravity once and refresh. Its access
-  token is short-lived and TokenMyBar deliberately never renews it for you — it
+  Antigravity once to renew**, just open Antigravity and refresh: while it runs,
+  usage comes straight from its language server, no token needed. Those messages
+  come from the OAuth fallback used when Antigravity is closed — its access
+  token is short-lived and TokenMyBar deliberately never renews it for you; it
   only reads `~/.gemini/oauth_creds.json`, which Antigravity rewrites when you
-  use it. There is no local history behind this vendor, so an expired sign-in
-  leaves nothing to show but the last reading.
-- If Antigravity shows a model at `0%`, that is a full quota, not an error: the
-  vendor's own screen reports the same bucket as "100% remaining". A model at
+  use it. There is no usage history behind this vendor, so a closed IDE plus an
+  expired sign-in leaves nothing to show but the last reading.
+- If Antigravity shows a row at `0%`, that is a full quota, not an error: the
+  vendor's own screen reports the same bucket as "100% remaining". A row at
   `100%` is the exhausted one.
 - If Antigravity's numbers look right but the plan badge is missing, the separate
   tier lookup failed. It is best-effort and never blocks a refresh; ignore it.

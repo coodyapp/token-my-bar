@@ -14,7 +14,11 @@ struct TokenMyBarApp {
         let delegate = AppDelegate()
         app.delegate = delegate
         app.setActivationPolicy(.accessory)
-        app.run()
+        // NSApplication.delegate is weak and ARC frees locals after last use,
+        // so the delegate must outlive run() explicitly.
+        withExtendedLifetime(delegate) {
+            app.run()
+        }
     }
 }
 
@@ -53,8 +57,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         popover.behavior = .transient
         popover.contentSize = NSSize(width: popoverWidth, height: 560)
         // NSPopover has no public API to hide its anchor arrow; this KVC key
-        // is the standard (long-stable, widely used) workaround.
-        popover.setValue(true, forKeyPath: "shouldHideAnchor")
+        // is the standard (long-stable, widely used) workaround. Guarded so a
+        // future macOS that drops the private setter shows the arrow instead
+        // of raising NSUndefinedKeyException at launch.
+        if popover.responds(to: NSSelectorFromString("setShouldHideAnchor:")) {
+            popover.setValue(true, forKey: "shouldHideAnchor")
+        }
 
         render()
         scheduleRefreshTimer()
@@ -170,9 +178,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func toggleLaunchAtLogin() {
-        let enable = !launchAtLogin.isEnabled
-        launchAtLogin.setEnabled(enable)
-        settings.launchAtLogin = launchAtLogin.isEnabled
+        launchAtLogin.setEnabled(!launchAtLogin.isEnabled)
     }
 
     @objc private func openSettings() {
@@ -251,6 +257,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let button = statusItem?.button {
             button.image = nil
             button.attributedTitle = statusTitle()
+            // VoiceOver reads the same numbers the bar shows, instead of the
+            // launch-time constant an attributed title otherwise freezes.
+            button.setAccessibilityTitle(MenuBarHeadline.spokenTitle(for: statusSegments()))
         }
 
         let actions = PopoverActions(
@@ -275,9 +284,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func statusTitle() -> NSAttributedString {
         let segments = statusSegments()
         if segments.isEmpty {
-            // No usable percent: flag attention if a vendor needs sign-in or errored,
-            // instead of a silent "--" that hides the problem.
-            if snapshots.contains(where: { $0.status == .unauthenticated || $0.status == .error }) {
+            // No usable percent: flag attention if a vendor needs sign-in,
+            // errored, or vanished with numbers, instead of a silent "--".
+            if MenuBarHeadline.needsAttention(snapshots, shown: []) {
                 return statusSegment(iconName: "exclamationmark.triangle", title: "")
             }
             return statusSegment(iconName: "chart.bar.xaxis", title: "--")
@@ -293,7 +302,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     title.append(NSAttributedString(string: "  "))
                 }
                 switch mode {
-                case .iconPercentage, .custom:
+                case .iconPercentage:
                     title.append(statusSegment(iconName: segment.providerID.iconName, title: segmentTitle(segment), isStale: segment.isStale))
                 case .percentageOnly:
                     title.append(statusText(segmentTitle(segment), isStale: segment.isStale))
@@ -323,19 +332,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func needsAttention(besides segments: [MenuBarHeadline]) -> Bool {
-        let shown = Set(segments.map(\.providerID))
-        return snapshots.contains { snapshot in
-            !shown.contains(snapshot.providerID)
-                && (snapshot.status == .unauthenticated || snapshot.status == .error)
-        }
+        MenuBarHeadline.needsAttention(snapshots, shown: Set(segments.map(\.providerID)))
     }
 
     private func effectiveDisplayMode(for segments: [MenuBarHeadline]) -> DisplayMode {
-        // Three vendors of "icon 100%" is the widest the title ever gets, so that
-        // is the case this setting exists for — a higher threshold never fires.
-        if settings.hideLabelsWhenSpaceLimited, segments.count > 2 { return .iconsOnly }
-        if settings.collapseToSummaryAutomatically, segments.count > 2 { return .summary }
-        return settings.displayMode
+        DisplayMode.effective(
+            explicit: settings.displayMode,
+            hideLabels: settings.hideLabelsWhenSpaceLimited,
+            collapseToSummary: settings.collapseToSummaryAutomatically,
+            segmentCount: segments.count
+        )
     }
 
     private func summaryStatusTitle(for segments: [MenuBarHeadline]) -> NSAttributedString {
@@ -347,7 +353,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let average = segments.map(\.percent).reduce(0, +) / Double(segments.count)
             return statusSegment(
                 iconName: "chart.bar.xaxis",
-                title: "\(Int(average.rounded()))%",
+                title: Format.percent(average),
                 isStale: segments.contains(where: \.isStale)
             )
         case .selectedProvider:

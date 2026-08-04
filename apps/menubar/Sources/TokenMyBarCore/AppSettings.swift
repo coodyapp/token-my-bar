@@ -31,7 +31,6 @@ public enum DisplayMode: String, CaseIterable, Codable, Sendable, Identifiable {
     case percentageOnly
     case iconsOnly
     case summary
-    case custom
 
     public var id: String { rawValue }
 
@@ -41,8 +40,26 @@ public enum DisplayMode: String, CaseIterable, Codable, Sendable, Identifiable {
         case .percentageOnly: "Percentage Only"
         case .iconsOnly: "Icons Only"
         case .summary: "Summary"
-        case .custom: "Custom"
         }
+    }
+
+    /// The mode the menu bar actually renders, after the space heuristics.
+    ///
+    /// Three vendors of "icon 100%" is the widest the title ever gets, so
+    /// segment count over 2 is the threshold both toggles share. Summary wins
+    /// over bare icons — one icon + percent is nearly as narrow as three bare
+    /// icons and strictly more informative — and an explicit Summary choice is
+    /// already as narrow as the heuristics could make it.
+    public static func effective(
+        explicit: DisplayMode,
+        hideLabels: Bool,
+        collapseToSummary: Bool,
+        segmentCount: Int
+    ) -> DisplayMode {
+        guard segmentCount > 2 else { return explicit }
+        if collapseToSummary || explicit == .summary { return .summary }
+        if hideLabels { return .iconsOnly }
+        return explicit
     }
 }
 
@@ -69,7 +86,6 @@ public enum SummaryCalculation: String, CaseIterable, Codable, Sendable, Identif
 public struct AppSettings {
     private enum Key {
         static let refreshInterval = "refreshInterval"
-        static let launchAtLogin = "launchAtLogin"
         static let disabledProviders = "disabledProviders"
         static let displayMode = "displayMode"
         static let summaryCalculation = "summaryCalculation"
@@ -92,11 +108,6 @@ public struct AppSettings {
             return RefreshInterval(rawValue: defaults.integer(forKey: Key.refreshInterval)) ?? .fiveMinutes
         }
         nonmutating set { defaults.set(newValue.rawValue, forKey: Key.refreshInterval) }
-    }
-
-    public var launchAtLogin: Bool {
-        get { defaults.bool(forKey: Key.launchAtLogin) }
-        nonmutating set { defaults.set(newValue, forKey: Key.launchAtLogin) }
     }
 
     public var displayMode: DisplayMode {

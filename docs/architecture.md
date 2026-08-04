@@ -72,14 +72,17 @@ Auth uses existing vendor sessions directly from the Mac. TokenMyBar does not pr
   first, then browser import (Chromium `v10` decryption + Firefox plaintext). A
   browser's Safe Storage Keychain key is only read when that browser holds a
   matching cookie.
-- Antigravity official usage uses OAuth from `~/.gemini/oauth_creds.json`
+- Antigravity official usage reads the language server the running IDE hosts —
+  a loopback-only RPC that needs no token and never expires, but only answers
+  while Antigravity runs. The fallback uses OAuth from `~/.gemini/oauth_creds.json`
   (override `TOKEN_MY_BAR_GEMINI_CREDS`), written by the Antigravity / Gemini
   sign-in. The stored access token is short-lived and is never refreshed; an
   expired one is reported, not renewed.
 - Local logs/SQLite remain fallback/cost-history sources and never become quota percentages unless vendor data exposes reset/limit semantics.
-- Antigravity is the one vendor with no local fallback — it is registered bare in
-  `defaultProviders()` rather than wrapped in `FallbackProvider`, because it keeps
-  no readable per-request usage file.
+- Antigravity is wrapped in `FallbackProvider` in `defaultProviders()` like every
+  other vendor, but with the order inverted: the local language-server RPC is the
+  primary and the OAuth quota endpoint is the fallback, because the local source
+  is what Antigravity's own quota screen reads and it needs no expiring token.
 - External Keychain reads rely on the OS access prompt for consent; TokenMyBar never writes or repairs other apps' Keychain items.
 
 ## Cache

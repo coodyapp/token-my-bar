@@ -11,9 +11,10 @@ public struct OpenCodeCookieUsageProvider: ProviderClient {
         // to apply without relaunching.
         let config = AppConfig.load()
         do {
-            let cookie = try await BlockingIO.run { try Self.cookieHeader(config: config) }
+            let cookie = try await BlockingIO.runPrompting { try Self.cookieHeader(config: config) }
             let workspaceIDs = try await Self.workspaceIDs(cookie: cookie, configuredID: config.openCodeWorkspaceID)
             var lastError: Error?
+            var lastParsed: ProviderSnapshot?
             for workspaceID in workspaceIDs {
                 do {
                     let object = try await Self.usageObject(cookie: cookie, workspaceID: workspaceID)
@@ -22,22 +23,13 @@ public struct OpenCodeCookieUsageProvider: ProviderClient {
                     // succeeding means the local one is never consulted — so the
                     // one figure the official page does not carry would never be
                     // seen. Best-effort: no spend must never cost the percentages.
-                    if snapshot.status == .ok { return snapshot.appending(Self.spendRows()) }
+                    if snapshot.status == .ok { return snapshot.appending(await Self.spendRows()) }
+                    lastParsed = snapshot
                 } catch {
                     lastError = error
                 }
             }
-            if let lastError {
-                return .failure(
-                    lastError,
-                    providerID: providerID,
-                    source: .browserCookie,
-                    authSummary: "OpenCode cookie",
-                    missingMessage: "OpenCode cookie not configured",
-                    failureMessage: "OpenCode cookie usage failed"
-                )
-            }
-            return .noData(providerID, source: .browserCookie, message: "No OpenCode workspace reported usage", authSummary: "OpenCode cookie")
+            return Self.resolve(lastParsed: lastParsed, lastError: lastError)
         } catch {
             return .failure(
                 error,
@@ -48,6 +40,24 @@ public struct OpenCodeCookieUsageProvider: ProviderClient {
                 failureMessage: "OpenCode cookie usage failed"
             )
         }
+    }
+
+    /// Decides what the workspace loop reports when nothing returned `.ok`.
+    /// A parsed-but-unreadable payload (schema drift) beats a generic failure
+    /// or "no data": it says the account exists and the page changed shape.
+    static func resolve(lastParsed: ProviderSnapshot?, lastError: Error?) -> ProviderSnapshot {
+        if let lastParsed, lastParsed.status == .error { return lastParsed }
+        if let lastError {
+            return .failure(
+                lastError,
+                providerID: .opencode,
+                source: .browserCookie,
+                authSummary: "OpenCode cookie",
+                missingMessage: "OpenCode cookie not configured",
+                failureMessage: "OpenCode cookie usage failed"
+            )
+        }
+        return .noData(.opencode, source: .browserCookie, message: "No OpenCode workspace reported usage", authSummary: "OpenCode cookie")
     }
 
     static func snapshot(from object: [String: Any]) -> ProviderSnapshot {
@@ -112,9 +122,11 @@ public struct OpenCodeCookieUsageProvider: ProviderClient {
     /// The "Spent" row, read from OpenCode's own local database.
     ///
     /// Empty when the database is absent or records nothing — a missing figure is
-    /// better than a zero that looks like a measurement.
-    static func spendRows() -> [UsageRow] {
-        guard let usage = try? OpenCodeLocalUsageProvider().readUsage(), usage.costUSD > 0 else { return [] }
+    /// better than a zero that looks like a measurement. The SQLite read goes
+    /// through `BlockingIO` like every other blocking provider read.
+    static func spendRows() async -> [UsageRow] {
+        guard let usage = try? await BlockingIO.run({ try OpenCodeLocalUsageProvider().readUsage() }),
+              usage.costUSD > 0 else { return [] }
         return usage.rows.filter { $0.key == "spend" }
     }
 

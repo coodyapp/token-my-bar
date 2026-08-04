@@ -83,10 +83,14 @@ public struct LocalJSONLUsageProvider: ProviderClient {
 
     public func snapshot() async -> ProviderSnapshot {
         do {
-            let usage = try scanUsage()
+            // Scanning JSONL logs is synchronous filesystem work; keep it off
+            // the cooperative pool.
+            let usage = try await BlockingIO.run { try scanUsage() }
             return ProviderSnapshot(
                 providerID: providerID,
-                status: usage.primaryTokens > 0 ? .ok : .noData,
+                // Any meaningful row makes the snapshot .ok: weekly numbers
+                // under a "No data" badge read as a contradiction.
+                status: usage.totalTokens > 0 ? .ok : .noData,
                 usedTokens: usage.primaryTokens > 0 ? usage.primaryTokens : nil,
                 unit: .tokens,
                 windowName: .session,
@@ -97,7 +101,9 @@ public struct LocalJSONLUsageProvider: ProviderClient {
                 isEstimated: true,
                 message: usage.primaryTokens > 0
                     ? "Local samples: \(usage.sampleCount)"
-                    : "Local logs found, but no token usage yet",
+                    : (usage.totalTokens > 0
+                        ? "No usage in the current 5h session"
+                        : "Local logs found, but no token usage yet"),
                 authSummary: authSummary,
                 // Rows of zeros would read as real data downstream and displace
                 // good cached numbers, so an empty scan reports nothing at all.
@@ -554,14 +560,6 @@ private struct ParsedUsage {
     }
 }
 
-/// Saturating sum: per-value clamping alone still leaves the running totals able
-/// to overflow across a very large corrupt log, and an overflow here traps.
-private func clampedSum(_ values: Int...) -> Int {
-    values.reduce(0) { partial, value in
-        let (sum, overflow) = partial.addingReportingOverflow(value)
-        return overflow ? .max : sum
-    }
-}
 
 private extension Int {
     mutating func clampedAdd(_ value: Int) {

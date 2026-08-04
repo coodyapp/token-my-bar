@@ -138,6 +138,31 @@ import Testing
     #expect(snapshot.planName == "Go")
 }
 
+@Test func opencodeCookieSnapshotReportsARenamedPercentFieldAsAnError() {
+    // A renamed usagePercent with resetInSec intact still parses a window; it
+    // must surface as schema drift, not read as an empty account.
+    let snapshot = OpenCodeCookieUsageProvider.snapshot(from: [
+        "rollingUsage": ["utilization_pct": 29, "resetInSec": 18_000],
+    ])
+
+    #expect(snapshot.status == .error)
+    #expect(snapshot.message?.contains("Usage payload changed") == true)
+}
+
+@Test func opencodeCookieLoopPrefersSchemaDriftOverGenericFallbacks() {
+    let drift = OpenCodeCookieUsageProvider.snapshot(from: [
+        "rollingUsage": ["utilization_pct": 29, "resetInSec": 18_000],
+    ])
+
+    let resolved = OpenCodeCookieUsageProvider.resolve(lastParsed: drift, lastError: URLError(.timedOut))
+    #expect(resolved.status == .error)
+    #expect(resolved.message?.contains("Usage payload changed") == true)
+
+    // Without a parsed snapshot the old precedence holds: error, then noData.
+    #expect(OpenCodeCookieUsageProvider.resolve(lastParsed: nil, lastError: URLError(.timedOut)).status == .error)
+    #expect(OpenCodeCookieUsageProvider.resolve(lastParsed: nil, lastError: nil).status == .noData)
+}
+
 @Test func claudeExtraUsageRowComputesSpendPercent() {
     // Screenshot: R$77.88 spent of R$200.00 limit => ~39% used.
     let row = ClaudeOAuthUsageProvider.extraUsageRow([
@@ -150,6 +175,30 @@ import Testing
     #expect(row?.percent == 38.94)
     #expect(row?.subtitle == "This month: $77.88 / $200.00")
     #expect(row?.detail == "39% used")
+}
+
+@Test func claudeExtraUsageRejectsNonFiniteValuesInsteadOfTrapping() {
+    // NaN survives min/max clamping (all comparisons are false), so an
+    // unguarded Int(percent.rounded()) traps. Unreadable values read as absent.
+    let nanUsed = ClaudeOAuthUsageProvider.extraUsageRow([
+        "is_enabled": true, "monthly_limit": 20_000, "used_credits": "nan",
+    ])
+    #expect(nanUsed?.value == "0%")
+
+    // inf/inf = NaN inside the percent math; an infinite limit is no limit.
+    #expect(ClaudeOAuthUsageProvider.extraUsageRow([
+        "is_enabled": true, "monthly_limit": "inf", "used_credits": "inf",
+    ]) == nil)
+
+    let negative = ClaudeOAuthUsageProvider.extraUsageRow([
+        "is_enabled": true, "monthly_limit": 20_000, "used_credits": -500,
+    ])
+    #expect(negative?.value == "0%")
+
+    let huge = ClaudeOAuthUsageProvider.extraUsageRow([
+        "is_enabled": true, "monthly_limit": 20_000, "used_credits": 1e18,
+    ])
+    #expect(huge?.value == "100%")
 }
 
 @Test func claudeExtraUsageIgnoredWhenDisabled() {

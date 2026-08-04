@@ -52,14 +52,25 @@ final class SettingsModel: ObservableObject {
     @Published var launchAtLoginEnabled: Bool {
         didSet {
             guard !isReloading else { return }
-            launchAtLogin.setEnabled(launchAtLoginEnabled)
+            let succeeded = launchAtLogin.setEnabled(launchAtLoginEnabled)
+            launchAtLoginMessage = succeeded
+                ? nil
+                : "macOS refused the change — see System Settings › General › Login Items."
             let actual = launchAtLogin.isEnabled
-            settings.launchAtLogin = actual
             if actual != launchAtLoginEnabled {
+                // Unlike a plain stored property, assigning a @Published
+                // property inside its own didSet re-fires the observer — the
+                // second pass would see a no-op success and wipe the failure
+                // message before SwiftUI ever renders it.
+                isReloading = true
                 launchAtLoginEnabled = actual
+                isReloading = false
             }
         }
     }
+
+    /// Why the last launch-at-login change did not take, or nil when it did.
+    @Published var launchAtLoginMessage: String?
 
     @Published var enabledVendors: Set<ProviderID> {
         didSet {
@@ -98,8 +109,9 @@ final class SettingsModel: ObservableObject {
         didSet { settings.monochromeIcons = monochromeIcons; onDisplayPreferencesChange() }
     }
 
-    /// Set while `reload()` mirrors external state in, so the property observers
-    /// don't read it back as a user edit and re-apply it.
+    /// Set while state is mirrored in from outside (`reload()`, the
+    /// failed-toggle revert above), so the property observers don't read the
+    /// assignment back as a user edit and re-apply it.
     private var isReloading = false
     private let settings: AppSettings
     private let launchAtLogin: LaunchAtLoginManager
@@ -189,7 +201,7 @@ struct SettingsView: View {
                 Toggle("Collapse to summary automatically", isOn: $model.collapseToSummaryAutomatically)
                 Toggle("Show provider order", isOn: $model.showProviderOrder)
                 Toggle("Show colored usage indicators", isOn: $model.showColoredUsageIndicators)
-                Toggle("Monochrome icons (follow macOS menu bar style)", isOn: $model.monochromeIcons)
+                Toggle("Monochrome menu bar text (follow macOS style)", isOn: $model.monochromeIcons)
             }
 
             Section("Refresh") {
@@ -203,10 +215,15 @@ struct SettingsView: View {
 
             Section("General") {
                 Toggle("Launch at login", isOn: $model.launchAtLoginEnabled)
+                if let message = model.launchAtLoginMessage {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
             }
 
             Section {
-                Text("TokenMyBar reads usage from your existing vendor sessions on this Mac. No data leaves your device.")
+                Text("TokenMyBar reads usage from your existing vendor sessions on this Mac. Requests go only to your vendors, plus a daily anonymous GitHub update check — never to a TokenMyBar server.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

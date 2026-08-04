@@ -38,9 +38,12 @@ public struct AntigravityLocalUsageProvider: ProviderClient {
     }
 
     private func userStatus() async throws -> [String: Any] {
+        // The port scan shells out to lsof and reads its pipe synchronously —
+        // blocking work that must stay off the cooperative pool.
+        let ports = (try? await BlockingIO.run(portFinder)) ?? []
         // Each server binds two ports and only one speaks plain HTTP; the other
         // answers TLS and is skipped rather than guessed at.
-        for port in portFinder() {
+        for port in ports {
             guard let url = URL(string: "http://127.0.0.1:\(port)\(Self.rpcPath)") else { continue }
             var request = URLRequest(url: url, timeoutInterval: 3)
             request.httpMethod = "POST"

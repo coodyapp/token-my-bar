@@ -376,7 +376,7 @@ private struct UsageRowView: View {
 
     private var percentText: String {
         guard !hasElapsed else { return "—" }
-        return row.percent.map { "\(Int($0.rounded()))%" } ?? row.value
+        return row.percent.map(Format.percent) ?? row.value
     }
 
     var body: some View {
@@ -465,7 +465,9 @@ private struct ProgressBar: View {
         }
         .accessibilityElement()
         .accessibilityLabel("Usage")
-        .accessibilityValue("\(Int(percent))%")
+        // Same formatter as the visible label: truncation here made VoiceOver
+        // say 69% where the screen showed 70%.
+        .accessibilityValue(Format.percent(percent))
     }
 }
 

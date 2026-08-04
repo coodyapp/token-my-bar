@@ -54,3 +54,10 @@ private actor Counter {
     private(set) var value = 0
     func increment() { value += 1 }
 }
+
+@Test func updateVersionParsingRejectsPartiallyNumericTags() {
+    // compactMap silently turned "1.foo.9" into [1, 9], which would announce
+    // a malformed tag over a real 1.x release. Unparseable means silent.
+    #expect(!UpdateChecker.isNewer("1.foo.9", than: "1.2.0"))
+    #expect(!UpdateChecker.isNewer("1.foo.9", than: "1.9.0"))
+}

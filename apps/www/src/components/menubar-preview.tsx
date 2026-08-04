@@ -212,7 +212,7 @@ function UsageBar({
         className="size-5 shrink-0 p-[3.5px]"
         style={{ color: MAC.secondary }}
       />
-      <div className="flex flex-col gap-px pl-[9px]">
+      <div className="flex min-w-0 flex-col gap-px pl-[9px]">
         <span
           className="text-[13px] leading-4 font-medium"
           style={{ color: MAC.label }}
@@ -231,10 +231,12 @@ function UsageBar({
         <div
           role="progressbar"
           aria-label={`${row.title} usage`}
-          aria-valuenow={row.percent}
+          // The animated drain is decorative; the reported value follows the
+          // phase target so AT is never told 80% while the bar shows 0%.
+          aria-valuenow={target}
           aria-valuemin={0}
           aria-valuemax={100}
-          className="h-[6px] w-[150px] shrink-0 overflow-hidden rounded-full"
+          className="h-[6px] w-[150px] min-w-14 shrink overflow-hidden rounded-full"
           style={{ backgroundColor: "rgba(152,152,157,0.3)" }}
         >
           <div
@@ -251,7 +253,11 @@ function UsageBar({
         className="min-w-[38px] pl-2.5 text-right text-[12px] tabular-nums"
         style={{ color: MAC.secondary }}
       >
-        {hasMeter ? <AnimatedPercent target={target} delay={delay} /> : row.value}
+        {hasMeter ? (
+          <AnimatedPercent target={target} delay={delay} />
+        ) : (
+          row.value
+        )}
       </span>
     </div>
   )
@@ -455,7 +461,8 @@ export function MenubarPreview() {
           </div>
         ))}
       </div>
-      <figcaption className="mt-4 text-center font-mono text-xs text-[rgba(235,235,245,0.45)]">
+      {/* 0.55 alpha over neutral-950 is 5.45:1 — the 0.45 it replaces failed WCAG AA. */}
+      <figcaption className="mt-4 text-center font-mono text-xs text-[rgba(235,235,245,0.55)]">
         Built with a privacy-first approach, it runs with zero telemetry.
       </figcaption>
     </figure>

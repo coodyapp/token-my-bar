@@ -24,7 +24,19 @@ public struct MenuBarHeadline: Equatable, Sendable {
     }
 
     public var percentText: String {
-        "\(Int(percent.rounded()))%"
+        Format.percent(percent)
+    }
+
+    /// The sentence VoiceOver reads for the status item — the same numbers the
+    /// bar renders, so the spoken value can never freeze at launch time.
+    public static func spokenTitle(for segments: [MenuBarHeadline]) -> String {
+        guard !segments.isEmpty else { return "TokenMyBar usage" }
+        let parts = segments.map { segment in
+            let window = segment.windowLabel.isEmpty ? "" : " (\(segment.windowLabel))"
+            let stale = segment.isStale ? ", stale" : ""
+            return "\(segment.providerID.displayName) \(segment.percentText)\(window)\(stale)"
+        }
+        return "TokenMyBar usage: " + parts.joined(separator: ", ")
     }
 
     /// Builds the headline for one snapshot, or `nil` when the vendor has no
@@ -56,6 +68,25 @@ public struct MenuBarHeadline: Equatable, Sendable {
 
     public static func all(_ snapshots: [ProviderSnapshot], now: Date = Date()) -> [MenuBarHeadline] {
         snapshots.compactMap { from($0, now: now) }
+    }
+
+    /// True when a vendor that belongs in the bar produced no headline.
+    /// Expired auth and errors always qualify; so does a vendor that had a
+    /// number (a percent on the snapshot or any row) but shows nothing — the
+    /// elapsed-window drop above is deliberate, and this is its counterpart
+    /// so the vendor is flagged rather than silently vanishing.
+    public static func needsAttention(_ snapshots: [ProviderSnapshot], shown: Set<ProviderID>) -> Bool {
+        snapshots.contains { snapshot in
+            guard !shown.contains(snapshot.providerID) else { return false }
+            switch snapshot.status {
+            case .unauthenticated, .error:
+                return true
+            case .ok, .stale:
+                return snapshot.usagePercent != nil || snapshot.usageRows.contains { $0.percent != nil }
+            case .noData, .loading:
+                return false
+            }
+        }
     }
 
     private static func isStale(_ snapshot: ProviderSnapshot) -> Bool {
