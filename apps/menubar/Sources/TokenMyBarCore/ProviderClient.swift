@@ -42,6 +42,10 @@ public struct FallbackProvider<Primary: ProviderClient, Fallback: ProviderClient
         if official.status == .ok { return official }
 
         let local = await fallback.snapshot()
+        // An authoritative fallback (Antigravity's OAuth endpoint behind the
+        // local language server) passes through as-is: merging would brand
+        // real data as estimated and misreport the failed primary's status.
+        if local.status == .ok, !local.isEstimated { return local }
         guard local.status == .ok || !local.usageRows.isEmpty else { return official }
         // Intentional: unauthenticated wins over local.status so StatusBadge keeps signaling "go re-auth" instead of masking it as merely stale data.
         return ProviderSnapshot(
@@ -52,7 +56,7 @@ public struct FallbackProvider<Primary: ProviderClient, Fallback: ProviderClient
             unit: official.unit,
             usagePercent: local.usagePercent ?? official.usagePercent,
             windowName: official.windowName,
-            resetAt: official.resetAt,
+            resetAt: official.resetAt ?? local.resetAt,
             refreshedAt: Date(),
             primarySource: local.primarySource,
             sources: Array(Set(official.sources + local.sources)).sorted { $0.rawValue < $1.rawValue },

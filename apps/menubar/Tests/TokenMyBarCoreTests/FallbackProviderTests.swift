@@ -13,8 +13,10 @@ private func snapshot(
     status: ProviderStatus,
     percent: Double? = nil,
     used: Int? = nil,
+    resetAt: Date? = nil,
     source: UsageSource = .oauth,
     plan: String? = nil,
+    isEstimated: Bool = false,
     rows: [UsageRow] = []
 ) -> ProviderSnapshot {
     ProviderSnapshot(
@@ -22,10 +24,11 @@ private func snapshot(
         status: status,
         usedTokens: used,
         usagePercent: percent,
+        resetAt: resetAt,
         primarySource: source,
         sources: [source],
         confidence: .high,
-        isEstimated: false,
+        isEstimated: isEstimated,
         planName: plan,
         usageRows: rows
     )
@@ -48,7 +51,7 @@ private func snapshot(
 @Test func fallbackKeepsUnauthenticatedButShowsLocalRows() async {
     let official = snapshot(.claudeCode, status: .unauthenticated)
     let rows = [UsageRow(key: "session", title: "Session", value: "12K")]
-    let local = snapshot(.claudeCode, status: .ok, used: 12_000, source: .localLog, rows: rows)
+    let local = snapshot(.claudeCode, status: .ok, used: 12_000, source: .localLog, isEstimated: true, rows: rows)
     let provider = FallbackProvider(
         primary: StubProvider(providerID: .claudeCode, result: official),
         fallback: StubProvider(providerID: .claudeCode, result: local)
@@ -64,7 +67,7 @@ private func snapshot(
 @Test func fallbackUsesLocalStatusOnError() async {
     let official = snapshot(.opencode, status: .error)
     let rows = [UsageRow(key: "rolling", title: "Rolling", value: "1K")]
-    let local = snapshot(.opencode, status: .ok, used: 1_000, source: .localFile, rows: rows)
+    let local = snapshot(.opencode, status: .ok, used: 1_000, source: .localFile, isEstimated: true, rows: rows)
     let provider = FallbackProvider(
         primary: StubProvider(providerID: .opencode, result: official),
         fallback: StubProvider(providerID: .opencode, result: local)
@@ -78,7 +81,7 @@ private func snapshot(
 @Test func fallbackPrefersFreshLocalUsageOverStaleOfficial() async {
     let official = snapshot(.codex, status: .error, percent: 80, used: 8_000)
     let rows = [UsageRow(key: "session", title: "Session", value: "12K")]
-    let local = snapshot(.codex, status: .ok, percent: 60, used: 12_000, source: .localLog, rows: rows)
+    let local = snapshot(.codex, status: .ok, percent: 60, used: 12_000, source: .localLog, isEstimated: true, rows: rows)
     let provider = FallbackProvider(
         primary: StubProvider(providerID: .codex, result: official),
         fallback: StubProvider(providerID: .codex, result: local)
@@ -92,7 +95,7 @@ private func snapshot(
 @Test func fallbackKeepsOfficialUsageWhenLocalHasNone() async {
     let official = snapshot(.codex, status: .error, percent: 80, used: 8_000)
     let rows = [UsageRow(key: "session", title: "Session", value: "?")]
-    let local = snapshot(.codex, status: .ok, source: .localLog, rows: rows)
+    let local = snapshot(.codex, status: .ok, source: .localLog, isEstimated: true, rows: rows)
     let provider = FallbackProvider(
         primary: StubProvider(providerID: .codex, result: official),
         fallback: StubProvider(providerID: .codex, result: local)
@@ -106,7 +109,7 @@ private func snapshot(
 @Test func fallbackForwardsPlanName() async {
     let official = snapshot(.claudeCode, status: .error, plan: "Pro")
     let rows = [UsageRow(key: "session", title: "Session", value: "1K")]
-    let local = snapshot(.claudeCode, status: .ok, used: 1_000, source: .localLog, rows: rows)
+    let local = snapshot(.claudeCode, status: .ok, used: 1_000, source: .localLog, isEstimated: true, rows: rows)
     let provider = FallbackProvider(
         primary: StubProvider(providerID: .claudeCode, result: official),
         fallback: StubProvider(providerID: .claudeCode, result: local)
@@ -114,6 +117,42 @@ private func snapshot(
 
     let result = await provider.snapshot()
     #expect(result.planName == "Pro")
+}
+
+@Test func fallbackReturnsAuthoritativeFallbackVerbatim() async {
+    // Antigravity inverts the usual order: the local language server is
+    // primary and OAuth is the fallback. When the IDE is closed but the OAuth
+    // token is alive, the authoritative fallback must come through as-is —
+    // not branded unauthenticated "estimated local history".
+    let local = snapshot(.antigravity, status: .unauthenticated, source: .localFile)
+    let reset = Date(timeIntervalSinceNow: 3_600)
+    let rows = [UsageRow(key: "gemini-3-pro", title: "Gemini 3 Pro", value: "40%")]
+    let oauth = snapshot(.antigravity, status: .ok, percent: 40, resetAt: reset, source: .oauth, rows: rows)
+    let provider = FallbackProvider(
+        primary: StubProvider(providerID: .antigravity, result: local),
+        fallback: StubProvider(providerID: .antigravity, result: oauth)
+    )
+
+    let result = await provider.snapshot()
+    #expect(result.status == .ok)
+    #expect(!result.isEstimated)
+    #expect(result.primarySource == .oauth)
+    #expect(result.resetAt == reset)
+    #expect(result.authSummary != "Official source unavailable; showing local history")
+}
+
+@Test func fallbackSurfacesLocalResetWhenOfficialHasNone() async {
+    let official = snapshot(.codex, status: .error)
+    let reset = Date(timeIntervalSinceNow: 1_800)
+    let rows = [UsageRow(key: "session", title: "Session", value: "12K")]
+    let local = snapshot(.codex, status: .ok, used: 12_000, resetAt: reset, source: .localLog, isEstimated: true, rows: rows)
+    let provider = FallbackProvider(
+        primary: StubProvider(providerID: .codex, result: official),
+        fallback: StubProvider(providerID: .codex, result: local)
+    )
+
+    let result = await provider.snapshot()
+    #expect(result.resetAt == reset)
 }
 
 @Test func fallbackReturnsOfficialWhenLocalEmpty() async {
