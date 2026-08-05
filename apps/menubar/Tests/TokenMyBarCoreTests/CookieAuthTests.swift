@@ -125,3 +125,36 @@ import Testing
 @Test func opencodeUsagePageReturnsNilWhenNoWindows() {
     #expect(OpenCodeCookieUsageProvider.parseUsagePage("<html>nothing here</html>") == nil)
 }
+
+@Test func chromiumImportPicksOneProfileDeterministically() throws {
+    // Two profiles signed into different opencode.ai accounts merged into one
+    // header in arbitrary directory order, so whichever account's cookie came
+    // first won at random. Default wins; the rest are ordered lexicographically.
+    let root = FileManager.default.temporaryDirectory
+        .appendingPathComponent(UUID().uuidString, isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    for profile in ["Profile 2", "Default", "Profile 1"] {
+        let directory = root.appendingPathComponent(profile, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        var db: OpaquePointer?
+        let path = directory.appendingPathComponent("Cookies").path
+        try #require(sqlite3_open(path, &db) == SQLITE_OK)
+        defer { sqlite3_close(db) }
+        for sql in [
+            "CREATE TABLE cookies (name TEXT, encrypted_value BLOB, host_key TEXT, expires_utc INTEGER);",
+            "INSERT INTO cookies VALUES ('session', x'0102', '.opencode.ai', 0);",
+        ] {
+            try #require(sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK)
+        }
+    }
+
+    let ordered = BrowserCookieImporter.cookieDatabases(under: root)
+    #expect(ordered.count == 3)
+    #expect(ordered.first?.path.contains("/Default/") == true)
+    #expect(ordered.map { $0.deletingLastPathComponent().lastPathComponent } == ["Default", "Profile 1", "Profile 2"])
+
+    // Only the winning profile's rows are used — never a merge across accounts.
+    let rows = BrowserCookieImporter.firstEncryptedRows(in: ordered, domain: "opencode.ai")
+    #expect(rows.count == 1)
+}

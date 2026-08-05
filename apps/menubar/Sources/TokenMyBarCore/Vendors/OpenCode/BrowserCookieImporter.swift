@@ -80,7 +80,7 @@ public enum BrowserCookieImporter {
         guard !dbs.isEmpty else { return [] }
 
         // First pass: see if any DB holds the domain before touching Keychain.
-        let encrypted = dbs.flatMap { readChromiumRows(dbPath: $0.path, domain: domain) }
+        let encrypted = firstEncryptedRows(in: dbs, domain: domain)
         guard !encrypted.isEmpty else { return [] }
 
         guard let password = Keychain.genericPasswordString(
@@ -98,13 +98,23 @@ public enum BrowserCookieImporter {
         }
     }
 
-    private static func cookieDatabases(under root: URL) -> [URL] {
+    /// Cookie stores under a browser's user-data directory, in the order they
+    /// should be consulted: the `Default` profile first, then the rest
+    /// lexicographically. `contentsOfDirectory` returns an unspecified order,
+    /// which decided at random which signed-in account won.
+    static func cookieDatabases(under root: URL) -> [URL] {
         let fm = FileManager.default
         guard let entries = try? fm.contentsOfDirectory(at: root, includingPropertiesForKeys: nil) else {
             return []
         }
+        let ordered = entries.sorted { left, right in
+            let leftDefault = left.lastPathComponent == "Default"
+            let rightDefault = right.lastPathComponent == "Default"
+            if leftDefault != rightDefault { return leftDefault }
+            return left.lastPathComponent < right.lastPathComponent
+        }
         var dbs: [URL] = []
-        for entry in entries {
+        for entry in ordered {
             let direct = entry.appendingPathComponent("Cookies")
             if fm.fileExists(atPath: direct.path) { dbs.append(direct) }
             let network = entry.appendingPathComponent("Network/Cookies")
@@ -113,7 +123,20 @@ public enum BrowserCookieImporter {
         return dbs
     }
 
-    private struct ChromiumRow {
+    /// Rows from the first store that has any, rather than every store merged.
+    ///
+    /// Two profiles signed into different accounts each carry a cookie of the
+    /// same name; concatenating them sends both, and the server honors
+    /// whichever came first — so the account shown depended on directory order.
+    static func firstEncryptedRows(in dbs: [URL], domain: String) -> [ChromiumRow] {
+        for db in dbs {
+            let rows = readChromiumRows(dbPath: db.path, domain: domain)
+            if !rows.isEmpty { return rows }
+        }
+        return []
+    }
+
+    struct ChromiumRow {
         let name: String
         let encryptedValue: Data
     }

@@ -6,6 +6,15 @@ All notable changes to TokenMyBar are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Browser cookie import no longer merges cookies across Chromium profiles. Two
+  profiles signed into different opencode.ai accounts each carry a cookie of
+  the same name, and concatenating them let the server honor whichever the
+  filesystem happened to list first — so the account shown was arbitrary. The
+  `Default` profile now wins, then the rest in name order, and only the winning
+  profile's cookies are sent.
+
 ## [1.6.0] - 2026-08-03
 
 Hardening release: two independent external reviews were adversarially
