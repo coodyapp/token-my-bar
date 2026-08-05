@@ -30,11 +30,58 @@ jobs:
         # DMG if this is missing or create-dmg fails on the headless runner.
         run: brew install create-dmg
 
+      - name: Import Developer ID certificate
+        # Skips itself until the certificate secret exists, leaving package.sh
+        # to ad-hoc sign exactly as before. See docs/release-signing.md.
+        env:
+          CERT_P12: ${{ secrets.DEVELOPER_ID_CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.DEVELOPER_ID_CERT_PASSWORD }}
+        run: |
+          if [[ -z "$CERT_P12" ]]; then
+            echo "No Developer ID certificate configured — release will be ad-hoc signed."
+            exit 0
+          fi
+          # A throwaway keychain scoped to this runner: never touches login.keychain.
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          printf '%s' "$CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$CERT_PASSWORD" \
+            -T /usr/bin/codesign
+          rm -f "$RUNNER_TEMP/cert.p12"
+          # Lets codesign use the key without an interactive prompt.
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
+
       - name: Package app + DMG
+        env:
+          # Unset secrets arrive as empty strings, and package.sh gates on
+          # -n, so an unconfigured repo takes the ad-hoc path unchanged.
+          DEVELOPER_ID_APP: ${{ secrets.DEVELOPER_ID_APP }}
+          AC_APPLE_ID: ${{ secrets.AC_APPLE_ID }}
+          AC_TEAM_ID: ${{ secrets.AC_TEAM_ID }}
+          AC_PASSWORD: ${{ secrets.AC_PASSWORD }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           apps/menubar/Scripts/package.sh "$VERSION"
           shasum -a 256 "apps/menubar/dist/TokenMyBar-$VERSION.dmg" | tee "apps/menubar/dist/TokenMyBar-$VERSION.dmg.sha256"
+
+      - name: Verify signature and notarization
+        env:
+          DEVELOPER_ID_APP: ${{ secrets.DEVELOPER_ID_APP }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          codesign --verify --strict --verbose=2 "apps/menubar/dist/TokenMyBar.app"
+          if [[ -n "$DEVELOPER_ID_APP" ]]; then
+            # Gatekeeper's own verdict, not merely a well-formed signature.
+            spctl --assess --type execute --verbose=4 "apps/menubar/dist/TokenMyBar.app"
+            xcrun stapler validate "apps/menubar/dist/TokenMyBar-$VERSION.dmg"
+          else
+            echo "Ad-hoc build: skipping Gatekeeper and staple checks."
+          fi
 
       - name: Create or update GitHub release
         env:

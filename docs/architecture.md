@@ -164,12 +164,15 @@ Direct DMG and Homebrew ship the same bundle. Today:
 
 Planned mechanism:
 
-- Developer ID signing, hardened runtime, and notarization. `package.sh` already
-  has the branches (`DEVELOPER_ID_APP` for signing plus
+- Developer ID signing, hardened runtime, and notarization. `package.sh` has the
+  branches (`DEVELOPER_ID_APP` for signing plus
   `AC_APPLE_ID`/`AC_TEAM_ID`/`AC_PASSWORD` for notarytool) and
   `Scripts/TokenMyBar.entitlements` holds the intended hardened-runtime
-  entitlements, but `release.yml` sets none of those variables, so both branches
-  are dead in CI.
+  entitlements. `release.yml` now imports a certificate and passes those
+  variables through, so the only thing still missing is the Apple Developer
+  account behind the repository secrets — see
+  [release-signing.md](release-signing.md). Until they exist the secrets arrive
+  empty and every step takes the ad-hoc path unchanged.
 - Sparkle for direct DMG updates.
 
 App Store is future separate sandboxed target.

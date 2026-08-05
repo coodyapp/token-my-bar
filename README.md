@@ -16,8 +16,9 @@ TokenMyBar is a native macOS menu bar app that gives you real-time insight into 
 
 Requires macOS 14 (Sonoma) or newer on Apple Silicon.
 
-Releases are ad-hoc signed, not notarized (no Apple Developer ID yet). Gatekeeper
-only checks *quarantined* apps, so the paths below differ mainly in who clears the
+Releases are ad-hoc signed, not notarized (no Apple Developer ID yet — see
+[docs/release-signing.md](docs/release-signing.md)). Gatekeeper only checks
+*quarantined* apps, so the paths below differ mainly in who clears the
 quarantine flag.
 
 - **Install script** (recommended — verifies checksum, no Gatekeeper prompt):
